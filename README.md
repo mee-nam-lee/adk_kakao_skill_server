@@ -21,6 +21,8 @@ Generative AI Hackathon Task 6: ADK(Agent Development Kit)
 1. install ADK
     ```bash
     pip install google-adk
+    pip install google
+    pip install google-cloud-retail
     ```
 1. Set up a [Google Cloud project](https://cloud.google.com/vertex-ai/generative-ai/docs/start/quickstarts/quickstart-multimodal#setup-gcp)
 1. Enable the [Vertex AI API](https://console.cloud.google.com/flows/enableapi?apiid=aiplatform.googleapis.com).
