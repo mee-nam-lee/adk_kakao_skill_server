@@ -1,7 +1,7 @@
 from google.adk.tools import ToolContext
 from google.adk.tools.agent_tool import AgentTool
 import google.auth
-from google.cloud.retail import SearchRequest, SearchServiceClient
+from google.cloud.retail import SearchRequest, SearchServiceClient, ProductServiceClient, GetProductRequest
 
 project_id = google.auth.default()[1]
 
@@ -37,12 +37,15 @@ def call_catalog_search(query: str,) -> str:
     search_request = get_search_request(query)
     search_response = SearchServiceClient().search(search_request)
 
+    products = []
     if not search_response.results:
         print("The search operation returned no matching results.")
         print(search_response.results)
     else:
-        print(search_response.results)
-    
-    return search_response.results
+        product_client = ProductServiceClient()
+        for product_result in search_response.results:
+            request = GetProductRequest(name=product_result.product.name)
+            product_response = product_client.get_product(request=request)
+            products.append(product_response)
 
-# call_catalog_search("Hoodie1231231")
+    return products
