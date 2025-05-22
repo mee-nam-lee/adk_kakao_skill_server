@@ -24,7 +24,7 @@ def get_search_request(query: str):
 
     return search_request
 
-def call_catalog_search(query: str,) -> str:
+def call_catalog_search(query: str,) -> dict:
     """Searches the product catalog using the Google Cloud Retail API.
 
     Args:
@@ -34,18 +34,28 @@ def call_catalog_search(query: str,) -> str:
         A list of search results from the catalog.
         Returns an empty list if no results are found.
     """
+    print(query)
     search_request = get_search_request(query)
     search_response = SearchServiceClient().search(search_request)
 
     products = []
     if not search_response.results:
         print("The search operation returned no matching results.")
-        print(search_response.results)
     else:
         product_client = ProductServiceClient()
         for product_result in search_response.results:
             request = GetProductRequest(name=product_result.product.name)
             product_response = product_client.get_product(request=request)
-            products.append(product_response)
-
-    return products
+            print(product_response)
+            item = {
+                    'id': product_response.id, 
+                    'title': product_response.title, 
+                    'categories': ','.join(product_response.categories) if product_response.categories else '',
+                    'price': str(product_response.price_info.price) + ' ' + product_response.price_info.currency_code if product_response.price_info else '',
+                    'availability': product_response.availability, 
+                    'url': product_response.uri
+                }
+            products.append(item)
+            
+    print(products)
+    return { "items": products }
