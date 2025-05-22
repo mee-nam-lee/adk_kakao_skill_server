@@ -2,6 +2,7 @@ from google.adk.tools import ToolContext
 from google.adk.tools.agent_tool import AgentTool
 import google.auth
 from google.cloud.retail import SearchRequest, SearchServiceClient, ProductServiceClient, GetProductRequest
+import json
 
 project_id = google.auth.default()[1]
 
@@ -24,7 +25,7 @@ def get_search_request(query: str):
 
     return search_request
 
-def call_catalog_search(query: str,) -> dict:
+def call_catalog_search(query: str,) -> str:
     """Searches the product catalog using the Google Cloud Retail API.
 
     Args:
@@ -34,7 +35,7 @@ def call_catalog_search(query: str,) -> dict:
         A list of search results from the catalog.
         Returns an empty list if no results are found.
     """
-    print(query)
+    
     search_request = get_search_request(query)
     search_response = SearchServiceClient().search(search_request)
 
@@ -53,9 +54,10 @@ def call_catalog_search(query: str,) -> dict:
                     'categories': ','.join(product_response.categories) if product_response.categories else '',
                     'price': str(product_response.price_info.price) + ' ' + product_response.price_info.currency_code if product_response.price_info else '',
                     'availability': product_response.availability, 
-                    'url': product_response.uri
+                    'url': product_response.uri,
+                    'image': product_response.images[0].uri if product_response.images else ''
                 }
             products.append(item)
             
-    print(products)
-    return { "items": products }
+    print(json.dumps({ "items": products }))
+    return json.dumps({ "items": products })
