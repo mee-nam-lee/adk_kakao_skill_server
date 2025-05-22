@@ -14,7 +14,7 @@ Generative AI Hackathon Task 6: ADK(Agent Development Kit)
     ```
 1. Set up a virtual environment
     ```bash
-    python -m venv venv
+    python -m venv .venv
     source .venv/bin/activate
     # Windows CMD: .venv\Scripts\activate.bat
     ```
