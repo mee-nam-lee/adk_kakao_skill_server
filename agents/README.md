@@ -47,3 +47,37 @@ Generative AI Hackathon Task 6: ADK(Agent Development Kit)
 
 1. Now you can chat with your agent using the textbox. 
 
+
+
+curl -X POST http://localhost:8000/apps/catalog-agent/users/u_123/sessions/s_123 \
+  -H "Content-Type: application/json" \
+  -d '{"state": {"key1": "value1", "key2": 42}}'
+
+curl -X POST http://localhost:8000/run \
+-H "Content-Type: application/json" \
+-d '{
+"app_name": "catalog-agent",
+"user_id": "u_1234",
+"session_id": "s_1234",
+"new_message": {
+    "role": "user",
+    "parts": [{
+    "text": "I want to find a hoodies"
+    }]
+}
+}'
+
+curl -X POST http://localhost:8000/run_sse \
+-H "Content-Type: application/json" \
+-d '{
+"app_name": "catalog-agent",
+"user_id": "u_1234",
+"session_id": "s_1234",
+"new_message": {
+    "role": "user",
+    "parts": [{
+    "text": "I want to find a hoodies"
+    }]
+},
+"streaming": true
+}'
