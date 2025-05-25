@@ -47,7 +47,7 @@ def call_catalog_search(query: str,) -> str:
         for product_result in search_response.results:
             request = GetProductRequest(name=product_result.product.name)
             product_response = product_client.get_product(request=request)
-            print(product_response)
+            #print(product_response)
             item = {
                     'id': product_response.id, 
                     'title': product_response.title, 
@@ -59,5 +59,5 @@ def call_catalog_search(query: str,) -> str:
                 }
             products.append(item)
             
-    print(json.dumps({ "items": products }))
+    # print(json.dumps({ "items": products }))
     return json.dumps({ "items": products })

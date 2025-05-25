@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Send, Gift, Zap, Search } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 // 제공된 새로운 데이터셋
 const newProductData = {
@@ -28,6 +29,90 @@ const initialProducts = newProductData.items.map(item => ({
   icon: <Gift className="w-4 h-4 mr-1 text-purple-500" />, 
   price: item.price, 
 }));
+
+
+// createSession 함수 정의
+async function createSession(userId) {
+  const agentName = 'catalog_agent'; // API 경로에 사용될 에이전트 이름
+  const sessionId = uuidv4(); // UUID를 사용하여 세션 ID 생성
+  const apiUrl = `/apps/${agentName}/users/${userId}/sessions/${sessionId}`;
+
+  console.log(`create session: ${apiUrl}`);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      let errorBodyText = '';
+      try {
+        // 오류 응답 본문이 있다면 읽어보려고 시도합니다.
+        errorBodyText = await response.text();
+      } catch (e) {
+        // 본문 읽기 실패는 무시
+      }
+      const errorMessage = `HTTP Error! status: ${response.status}${errorBodyText ? `, content: ${errorBodyText}` : ''}`;
+      console.error('Failed to create session:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    console.log(`Create session User ID: ${userId}, Session ID: ${sessionId}`);
+    return sessionId; 
+  } catch (error) {
+    console.error('Exception when creating session:', error);
+    throw error; 
+  }
+}
+
+async function sendQuery(text, sessionId, userId) {
+  const agentName = 'catalog_agent'; // API 요청에 사용될 에이전트 이름
+  const apiUrl = `/run`;
+  const requestBody = {
+    app_name: agentName,
+    user_id: userId,
+    session_id: sessionId,
+    new_message: {
+      role: "user",
+      parts: [{
+        text: text
+      }]
+    },
+    streaming: false // curl 예시에 따라 false로 설정
+  };
+
+  console.log(`Catalog search request: ${apiUrl}`, requestBody);
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      let errorBodyText = '';
+      try {
+        errorBodyText = await response.text();
+      } catch (e) { /* 본문 읽기 실패는 무시 */ }
+      const errorMessage = `HTTP 오류! 상태: ${response.status}${errorBodyText ? `, 내용: ${errorBodyText}` : ''}`;
+      console.error('쿼리 전송 실패:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const responseData = await response.json(); // API가 JSON 응답을 반환한다고 가정
+    console.log('쿼리 응답 수신:', responseData);
+    return responseData;
+  } catch (error) {
+    console.error('쿼리 전송 중 예외 발생:', error);
+    throw error;
+  }
+}
 
 
 // 개별 상품 카드 컴포넌트
@@ -224,30 +309,58 @@ export default function App() {
     // );
   };
 
-  const handleSendMessage = (text) => {
-    const searchTerm = text.toLowerCase();
-    const newMessage = { id: Date.now(), text, isUser: true }; 
-    setMessages(prevMessages => [...prevMessages, newMessage]);
-    
-    const filteredProducts = initialProducts.filter(product => 
-      product.name.toLowerCase().includes(searchTerm) || 
-      product.type.toLowerCase().includes(searchTerm)
-    );
-    setCurrentProducts(filteredProducts);
-    setShowProducts(true); // 검색 시 항상 상품 표시
+  const handleSendMessage = async (text) => {
+    const userId = 'user_123'; // Hardcoded user ID as requested
 
-    // 초기 메시지의 버튼 관련 로직은 이미 제거되었으므로 이 부분은 영향 없음
-    // setMessages(prevMessages => 
-    //   prevMessages.map(msg => msg.id === 1 && msg.showButton ? { ...msg, showButton: false } : msg)
-    // );
+    // Add user's message to the UI immediately
+    const newUserMessage = {
+      id: uuidv4(), 
+      text: text,
+      isUser: true,
+    };
+    setMessages(prevMessages => [...prevMessages, newUserMessage]);
 
-    setTimeout(() => {
-      if (filteredProducts.length > 0) {
-        setMessages(prev => [...prev, {id: Date.now() + 1, text: `"${text}" 관련 상품 ${filteredProducts.length}개를 찾았습니다.`, isUser: false}])
+    try {
+      // 1. Call createSession to get a sessionId
+      // createSession already logs its own progress and errors to the console
+      const sessionId = await createSession(userId); 
+
+      if (sessionId) {
+        // 2. If session creation is successful, call sendQuery
+        // sendQuery also logs its own progress and errors to the console
+        const queryResponse = await sendQuery(text, sessionId, userId);
+        
+        // 3. Log the response from sendQuery to the console, as specifically requested
+        console.log('handleSendMessage: Response from sendQuery:', queryResponse);
+
+        // Note: As per the request, the bot's actual response content is only logged here.
+        // To display the bot's response in the UI, you would add another setMessages call here,
+        // parsing queryResponse to extract the message text. For example:
+        // if (queryResponse && queryResponse.parts && queryResponse.parts[0]?.text) { // Adjust based on actual response structure
+        //   const botMessage = { id: uuidv4(), text: queryResponse.parts[0].text, isUser: false };
+        //   setMessages(prev => [...prev, botMessage]);
+        // }
+
       } else {
-        setMessages(prev => [...prev, {id: Date.now() + 1, text: `"${text}" 관련 상품을 찾을 수 없습니다. 다른 검색어를 입력해보세요.`, isUser: false}])
+        // This case is less likely if createSession throws on failure, but included for robustness.
+        console.error('handleSendMessage: Failed to obtain sessionId from createSession.');
+        const errorUiMessage = {
+          id: uuidv4(),
+          text: 'Error: Could not establish a session. Please try sending your message again.',
+          isUser: false,
+        };
+        setMessages(prevMessages => [...prevMessages, errorUiMessage]);
       }
-    }, 500);
+    } catch (error) {
+      // Catches errors from createSession or sendQuery
+      console.error('handleSendMessage: An error occurred during API calls:', error);
+      const errorUiMessage = {
+        id: uuidv4(),
+        text: `Error: ${error.message || 'Failed to process your request. Please try again.'}`,
+        isUser: false, 
+      };
+      setMessages(prevMessages => [...prevMessages, errorUiMessage]);
+    }
   };
   
 

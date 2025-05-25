@@ -47,37 +47,81 @@ Generative AI Hackathon Task 6: ADK(Agent Development Kit)
 
 1. Now you can chat with your agent using the textbox. 
 
+## deployment 
+
+### Environment variables for the agent
+
+```bash
+export GOOGLE_CLOUD_LOCATION=us-central1
+export GOOGLE_GENAI_USE_VERTEXAI=TRUE
+export GOOGLE_CLOUD_PROJECT=<YOUR PROJECT ID>
+```
+
+### IAM policy
+
+Cloud Run application will run with Compute Engine Default Service Account. It needs a Retail Viewer role to call the Retail API.
+
+```bash
+export PROJECT_NUMBER=$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format="value(projectNumber)")
+export COMPUTE_SA=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
+gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member serviceAccount:${COMPUTE_SA} --role=roles/retail.viewer
+```
+
+### Build client application 
+
+```bash
+cd search-app
+yarn build
+```
+### Deploy agent to Cloud Run
+
+```bash
+cd ../agents
+gcloud run deploy catalog-agent \
+--source . \
+--region $GOOGLE_CLOUD_LOCATION \
+--project $GOOGLE_CLOUD_PROJECT \
+--allow-unauthenticated \
+--set-env-vars="GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT,GOOGLE_CLOUD_LOCATION=$GOOGLE_CLOUD_LOCATION,GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI"
+```
+
+Thre result look like this: 
+Check the Cloud Run URL. 
+```
+ (...)
+  ✓ Creating Revision...                                                                                                                                            
+  ✓ Routing traffic...                                                                                                                                             
+  ✓ Setting IAM Policy...                                                                                                                                                              
+Done.                                                                                                                                                                                  
+Service [catalog-agent] revision [catalog-agent-00001-bsq] has been deployed and is serving 100 percent of traffic.
+Service URL: https://catalog-agent-790012362778.us-central1.run.app
+```
+
+### Client application
 
 
-curl -X POST http://localhost:8000/apps/catalog-agent/users/u_123/sessions/s_123 \
-  -H "Content-Type: application/json" \
-  -d '{"state": {"key1": "value1", "key2": 42}}'
 
-curl -X POST http://localhost:8000/run \
--H "Content-Type: application/json" \
--d '{
-"app_name": "catalog-agent",
-"user_id": "u_1234",
-"session_id": "s_1234",
-"new_message": {
-    "role": "user",
-    "parts": [{
-    "text": "I want to find a hoodies"
-    }]
-}
-}'
+### Test the API with curl
 
-curl -X POST http://localhost:8000/run_sse \
--H "Content-Type: application/json" \
--d '{
-"app_name": "catalog-agent",
-"user_id": "u_1234",
-"session_id": "s_1234",
-"new_message": {
-    "role": "user",
-    "parts": [{
-    "text": "I want to find a hoodies"
-    }]
-},
-"streaming": true
-}'
+Use the Service URL. 
+
+```
+export APP_URL="<Cloud Run Service URL>"
+curl -X POST $APP_URL/apps/catalog_agent/users/user_123/sessions/session_abc \
+    -H "Content-Type: application/json" 
+
+curl -X POST $APP_URL/run_sse \
+    -H "Content-Type: application/json" \
+    -d '{                                                              
+    "app_name": "catalog_agent",
+    "user_id": "user_123",
+    "session_id": "session_abc",
+    "new_message": {
+        "role": "user",
+        "parts": [{
+        "text": "I want to have a hoodie?"
+        }]
+    },
+    "streaming": false
+    }'
+```

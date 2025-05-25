@@ -7,7 +7,7 @@ from .tools import call_catalog_search
 
 
 root_agent = Agent(
-    name="catalog_search_agent",
+    name="catalog_agent",
     model="gemini-2.0-flash",
     description=(
         "Agent to search the product catalog."
