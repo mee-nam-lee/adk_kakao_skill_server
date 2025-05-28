@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Gift, ChevronLeft, ChevronRight, Send, Search, X, MessageSquare } from 'lucide-react';
+import ReactDOMServer from 'react-dom/server'; // Import ReactDOMServer
+import { Plus, Gift, Send, Search, X, MessageSquare } from 'lucide-react';
 
-// Product Card Component
+// Product Card Component (remains the same)
 const ProductCard = ({ name, price, currency, stockInfo, imageUrl, category, productUrl }) => {
   return (
     <div className="bg-white rounded-xl shadow-lg p-4 w-72 md:w-80 flex-shrink-0 flex flex-col hover:shadow-xl transition-shadow duration-300">
@@ -50,7 +51,7 @@ const formatApiProducts = (apiProductItems) => {
       currency: currencyValue,
       stockInfo: item.availability > 0 ? `In stock (${item.availability})` : "Out of stock",
       imageUrl: item.image,
-      category: item.categories, // API 응답에 categories 필드 사용
+      category: item.categories, 
       productUrl: item.url,
       availability: item.availability
     };
@@ -62,20 +63,13 @@ const formatApiProducts = (apiProductItems) => {
 const AgentUI = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
-  // const [allProducts, setAllProducts] = useState([]); // 전체 상품 목록은 이제 API 검색 결과로 대체될 수 있음
-  const [searchResults, setSearchResults] = useState([]); 
-  const [showSearchResultsSection, setShowSearchResultsSection] = useState(false); 
   
   const [sessionId, setSessionId] = useState(null);
-  const [userName, setUserName] = useState("user_123"); 
+  const userName = "user_123"; 
 
-  const scrollContainerRef = useRef(null);
-  const chatContainerRef = useRef(null);
+  const chatContainerRef = useRef(null); 
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080"; 
-
-  // newProductData는 이제 API 호출로 대체되므로 주석 처리하거나 제거 가능
-  // const newProductData = { items: [ /* ... */ ] };
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL | ""; 
 
   const createNewSession = async (currentSessionId, currentUserName) => {
     if (!currentSessionId || !currentUserName) {
@@ -118,9 +112,8 @@ const AgentUI = () => {
       streaming: false
     };
     console.log(`Searching catalog: POST ${apiUrl}`, requestBody);
+    
     setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Searching for "${userInput}"...` }]);
-    setShowSearchResultsSection(false); // 이전 검색 결과 숨기기
-    setSearchResults([]); // 이전 검색 결과 초기화
 
     try {
       const response = await fetch(apiUrl, {
@@ -130,46 +123,130 @@ const AgentUI = () => {
       });
 
       if (response.ok) {
-        const apiResponseArray = await response.json(); // API 응답은 배열 형태
+        const apiResponseArray = await response.json(); 
         console.log('Search catalog response (raw array):', apiResponseArray);
 
-        let productsFound = [];
+        let productsFound = []; 
+        let hasFunctionResponse = false; // functionResponse가 있었는지 여부 확인
 
         if (Array.isArray(apiResponseArray)) {
           apiResponseArray.forEach(responseItem => {
             if (responseItem.content && Array.isArray(responseItem.content.parts)) {
               responseItem.content.parts.forEach(part => {
-                if (part.functionResponse && part.functionResponse.name === "call_catalog_search") { //
+                if (part.functionResponse && part.functionResponse.name === "call_catalog_search") {
+                  hasFunctionResponse = true;
                   try {
-                    const resultJson = JSON.parse(part.functionResponse.response.result); //
+                    const resultJson = JSON.parse(part.functionResponse.response.result); 
                     if (resultJson && Array.isArray(resultJson.items)) {
-                      productsFound = formatApiProducts(resultJson.items); //
+                      productsFound = formatApiProducts(resultJson.items); 
                       console.log("Formatted products from API:", productsFound);
                     }
                   } catch (e) {
                     console.error("Failed to parse functionResponse result JSON:", e);
                   }
-                }
+                } 
+                // part.text 처리 로직은 제거 (botResponseText 변수 삭제)
               });
             }
           });
         }
         
-
+        // "Searching for..." 메시지를 기본 응답으로 업데이트하거나, 상품 정보를 포함한 메시지로 업데이트
+        setChatMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            const lastMessageIndex = updatedMessages.length - 1;
+            if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].type === 'bot' && updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
+                // 상품이 없을 경우 기본 완료 메시지, 있거나 functionResponse가 있었으면 해당 메시지 유지 (아래에서 상품 정보 추가)
+                if (!hasFunctionResponse && productsFound.length === 0) {
+                     updatedMessages[lastMessageIndex] = { type: 'bot', text: "Search complete." };
+                } else if (productsFound.length === 0 && hasFunctionResponse) { // functionResponse는 있었지만 상품은 0개
+                     updatedMessages[lastMessageIndex] = { type: 'bot', text: "I looked for products based on your query." };
+                }
+                // 상품이 있으면 "Searching for..." 메시지는 아래 상품 정보 메시지로 대체될 것임
+            } else if (!hasFunctionResponse && productsFound.length === 0) {
+                updatedMessages.push({ type: 'bot', text: "Search complete." });
+            }
+            return updatedMessages;
+        });
         
         if (productsFound.length > 0) {
-          setSearchResults(productsFound);
-          setShowSearchResultsSection(true);
+          const availableCount = productsFound.filter(p => p.availability > 0).length;
+          const outOfStockCount = productsFound.length - availableCount;
+          let productsInfoText = `I found ${productsFound.length} product(s) for you.`;
+          if (availableCount === productsFound.length) { productsInfoText += " All are in stock!"; }
+          else if (availableCount === 0) { productsInfoText += " Unfortunately, all are out of stock."; }
+          else { productsInfoText += ` (${availableCount} in stock, ${outOfStockCount} out of stock).`; }
+
+          // "Searching for..." 메시지를 제품 정보 텍스트로 교체하거나 바로 뒤에 추가
+            setChatMessages(prev => {
+                const updatedMessages = [...prev];
+                const lastMessageIndex = updatedMessages.length - 1;
+                if (lastMessageIndex >=0 && updatedMessages[lastMessageIndex].type === 'bot' && 
+                    (updatedMessages[lastMessageIndex].text.startsWith("Searching for") || updatedMessages[lastMessageIndex].text === "I looked for products based on your query.")) {
+                    updatedMessages[lastMessageIndex] = { type: 'bot', text: productsInfoText };
+                } else {
+                    updatedMessages.push({ type: 'bot', text: productsInfoText });
+                }
+                return updatedMessages;
+            });
+
+
+          const productCardsHtml = productsFound.map(product => 
+              ReactDOMServer.renderToString(
+                  <ProductCard 
+                      key={product.id} 
+                      name={product.name}
+                      price={product.price}
+                      currency={product.currency}
+                      stockInfo={product.stockInfo}
+                      imageUrl={product.imageUrl}
+                      category={product.category}
+                      productUrl={product.productUrl}
+                  />
+              )
+          ).join('');
+          
+          const productListContainerHtml = `
+            <div class="flex overflow-x-auto space-x-4 py-3 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-purple-100 rounded-lg">
+              ${productCardsHtml}
+            </div>`;
+          
+          setChatMessages(prev => [...prev, { type: 'bot_products', text: productListContainerHtml }]);
+        } else if (hasFunctionResponse && productsFound.length === 0) { 
+             // functionResponse는 있었지만 상품이 없는 경우 (위에서 "I looked for products..." 메시지로 이미 처리됨)
+             // 추가 메시지가 필요하면 여기에 작성
+        } else if (!hasFunctionResponse && productsFound.length === 0) {
+            // functionResponse도 없고 상품도 없는 경우 (위에서 "Search complete." 메시지로 이미 처리됨)
+            // 만약 "Sorry, I couldn't find..." 메시지를 명시적으로 추가하고 싶다면 여기에
         }
+
 
       } else {
         const errorData = await response.json().catch(() => ({ message: "Failed to parse error response from search" }));
         console.error('Failed to search catalog:', response.status, errorData);
-        setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Sorry, I encountered an error while searching: ${errorData.message || response.statusText}` }]);
+        setChatMessages(prevMessages => { 
+            const updatedMessages = [...prevMessages];
+            const lastMessageIndex = updatedMessages.length - 1;
+            if (lastMessageIndex >=0 && updatedMessages[lastMessageIndex].type === 'bot' && updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
+                 updatedMessages[lastMessageIndex] = { type: 'bot', text: `Sorry, I encountered an error: ${errorData.message || response.statusText}` };
+            } else {
+                updatedMessages.push({ type: 'bot', text: `Sorry, I encountered an error: ${errorData.message || response.statusText}` });
+            }
+            return updatedMessages;
+        });
       }
     } catch (error) {
       console.error('Error during searchCatalog API call:', error);
-      setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Sorry, a network error occurred: ${error.message}` }]);
+      setChatMessages(prevMessages => { 
+            const updatedMessages = [...prevMessages];
+            const lastMessageIndex = updatedMessages.length - 1;
+            if (lastMessageIndex >=0 && updatedMessages[lastMessageIndex].type === 'bot' && updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
+                 updatedMessages[lastMessageIndex] = { type: 'bot', text: `Sorry, a network error occurred: ${error.message}` };
+            } else {
+                updatedMessages.push({ type: 'bot', text: `Sorry, a network error occurred: ${error.message}` });
+            }
+            return updatedMessages;
+        });
     }
   };
 
@@ -182,22 +259,9 @@ const AgentUI = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userName]); 
 
-  // 상품 데이터 초기화 로직은 API 호출로 대체되었으므로 주석 처리 또는 제거
-  // useEffect(() => {
-  //   const formattedProducts = newProductData.items.map(item => { /* ... */ });
-  //   setAllProducts(formattedProducts);
-  // }, []);
-
  useEffect(() => {
     if (chatContainerRef.current) { chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; }
   }, [chatMessages]);
-
-  const scroll = (direction) => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = 300; 
-      scrollContainerRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   const handleSearchChange = (event) => { setSearchTerm(event.target.value); };
   const clearSearch = () => { setSearchTerm(""); };
@@ -208,34 +272,20 @@ const AgentUI = () => {
     if (trimmedUserInput) {
       setChatMessages(prevMessages => [...prevMessages, { type: 'user', text: trimmedUserInput }]);
       setSearchTerm("");
-      
       await searchCatalog(trimmedUserInput, sessionId, userName);
-      // 클라이언트 측 필터링 로직 제거, API 응답으로 searchResults가 채워짐
     }
   };
   
   const handleNewConversation = () => {
     setChatMessages([]);
     setSearchTerm("");
-    setSearchResults([]);
-    setShowSearchResultsSection(false);
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
     if (userName) { 
         createNewSession(newSessionId, userName); 
     }
   };
-
-  const availableSearchResultsCount = searchResults.filter(p => p.availability > 0).length;
-  let searchResultsInfoText = "";
-  if (showSearchResultsSection && searchResults.length > 0) { 
-    searchResultsInfoText = `Found ${searchResults.length} product(s) matching your search.`;
-    const outOfStockCount = searchResults.length - availableSearchResultsCount;
-    if (availableSearchResultsCount === searchResults.length) { searchResultsInfoText += " (All in stock)"; } 
-    else if (availableSearchResultsCount === 0) { searchResultsInfoText += " (All out of stock)"; } 
-    else { searchResultsInfoText += ` (${availableSearchResultsCount} in stock, ${outOfStockCount} out of stock)`; }
-  }
-
+  
   return (
     <div className="flex flex-col h-screen bg-purple-50 font-sans antialiased">
       <header className="bg-purple-600 text-white p-4 flex justify-between items-center shadow-md flex-shrink-0 sticky top-0 z-20">
@@ -246,7 +296,7 @@ const AgentUI = () => {
       </header>
 
       <main ref={chatContainerRef} className="flex-grow p-4 md:p-6 overflow-y-auto">
-        {chatMessages.length === 0 && !showSearchResultsSection && (
+        {chatMessages.length === 0 && ( 
             <div className="bg-fuchsia-100 text-gray-700 p-4 rounded-lg mb-6 shadow flex items-start">
                 <MessageSquare size={24} className="text-purple-600 mr-3 flex-shrink-0 mt-1" />
                 <p> Please enter what you are looking for in the product catalog. </p>
@@ -255,29 +305,18 @@ const AgentUI = () => {
         <div className="space-y-4 mb-6">
           {chatMessages.map((msg, index) => (
             <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-xl p-3 rounded-lg shadow ${ msg.type === 'user' ? 'bg-purple-500 text-white' : 'bg-white text-gray-700' }`}>
-                {/* 봇 메시지가 Markdown 테이블일 경우, 스타일링이 필요할 수 있습니다. 여기서는 텍스트로만 표시됩니다. */}
+              <div className={`max-w-full p-3 rounded-lg shadow ${ 
+                msg.type === 'user' 
+                  ? 'bg-purple-500 text-white ml-auto' 
+                  : msg.type === 'bot_products' 
+                    ? 'bg-transparent w-full' 
+                    : 'bg-white text-gray-700 mr-auto' 
+              }`}>
                 <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
               </div>
             </div>
           ))}
         </div>
-        {showSearchResultsSection && searchResults.length > 0 && (
-          <div className="relative mb-6">
-            <h2 className="text-2xl font-semibold text-gray-700 mb-1 ml-1">Search Results</h2>
-            {searchResultsInfoText && ( <p className="text-sm text-gray-500 mb-4 ml-1">{searchResultsInfoText}</p> )}
-            <div className="flex items-center"> 
-                <button title="Previous Product" onClick={() => scroll('left')} className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 p-2 ml-[-10px] md:ml-[-15px] rounded-full bg-white/80 hover:bg-white text-purple-600 shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400" style={{ marginTop: '2.5rem' }} > <ChevronLeft size={28} /> </button>
-                <div ref={scrollContainerRef} className="flex items-stretch space-x-4 overflow-x-auto pb-4 pt-2 scrollbar-hide">
-                    {searchResults.map((product) => ( 
-                      <ProductCard key={product.id} name={product.name} price={product.price} currency={product.currency} stockInfo={product.stockInfo} imageUrl={product.imageUrl} category={product.category} productUrl={product.productUrl} />
-                    ))}
-                    <div className="flex-shrink-0 w-1"></div> 
-                </div>
-                <button title="Next Product" onClick={() => scroll('right')} className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 p-2 mr-[-10px] md:mr-[-15px] rounded-full bg-white/80 hover:bg-white text-purple-600 shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400" style={{ marginTop: '2.5rem' }} > <ChevronRight size={28} /> </button>
-            </div>
-          </div>
-        )}
       </main>
 
       <footer className="bg-white p-3 border-t border-gray-200 flex-shrink-0 sticky bottom-0 z-20">
