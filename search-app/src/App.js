@@ -1,399 +1,295 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Send, Gift, Zap, Search } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Gift, ChevronLeft, ChevronRight, Send, Search, X, MessageSquare } from 'lucide-react';
 
-// 제공된 새로운 데이터셋
-const newProductData = {
-  "items": [
-    { "id": "GGOEGAEB164817", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "35.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164812", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "60.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164815", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "60.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164816", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "60.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164813", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "60.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164818", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "35.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAEB164814", "title": "Google Black Eco Zip Hoodie", "categories": "Apparel", "price": "60.0 USD", "availability": 2, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Black+Eco+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" },
-    { "id": "GGOEGAXJ164914", "title": "Google Gray Toddler Zip Hoodie", "categories": "Apparel", "price": "50.0 USD", "availability": 1, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Gray+Toddler+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/GGOEGXXX1649.jpg" },
-    { "id": "GGOEGAXJ164913", "title": "Google Gray Toddler Zip Hoodie", "categories": "Apparel", "price": "35.0 USD", "availability": 1, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Gray+Toddler+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/GGOEGXXX1649.jpg" },
-    { "id": "GGOEGAXJ164915", "title": "Google Gray Toddler Zip Hoodie", "categories": "Apparel", "price": "50.0 USD", "availability": 1, "url": "https://shop.googlemerchandisestore.com/Google+Redesign/Apparel/Google+Gray+Toddler+Zip+Hoodie", "image": "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/GGOEGXXX1649.jpg" }
-  ]
-};
-
-// 새로운 데이터셋을 애플리케이션에서 사용할 형태로 변환
-const initialProducts = newProductData.items.map(item => ({
-  id: item.id,
-  type: item.categories, 
-  name: item.title,
-  description: `${item.availability === 1 ? '한정 수량!' : '재고 있음'}`,
-  detailsLink: item.url,
-  image: item.image,
-  icon: <Gift className="w-4 h-4 mr-1 text-purple-500" />, 
-  price: item.price, 
-}));
-
-
-// createSession 함수 정의
-async function createSession(userId) {
-  const agentName = 'catalog_agent'; // API 경로에 사용될 에이전트 이름
-  const sessionId = uuidv4(); // UUID를 사용하여 세션 ID 생성
-  const apiUrl = `/apps/${agentName}/users/${userId}/sessions/${sessionId}`;
-
-  console.log(`create session: ${apiUrl}`);
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      let errorBodyText = '';
-      try {
-        // 오류 응답 본문이 있다면 읽어보려고 시도합니다.
-        errorBodyText = await response.text();
-      } catch (e) {
-        // 본문 읽기 실패는 무시
-      }
-      const errorMessage = `HTTP Error! status: ${response.status}${errorBodyText ? `, content: ${errorBodyText}` : ''}`;
-      console.error('Failed to create session:', errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    console.log(`Create session User ID: ${userId}, Session ID: ${sessionId}`);
-    return sessionId; 
-  } catch (error) {
-    console.error('Exception when creating session:', error);
-    throw error; 
-  }
-}
-
-async function sendQuery(text, sessionId, userId) {
-  const agentName = 'catalog_agent'; // API 요청에 사용될 에이전트 이름
-  const apiUrl = `/run`;
-  const requestBody = {
-    app_name: agentName,
-    user_id: userId,
-    session_id: sessionId,
-    new_message: {
-      role: "user",
-      parts: [{
-        text: text
-      }]
-    },
-    streaming: false // curl 예시에 따라 false로 설정
-  };
-
-  console.log(`Catalog search request: ${apiUrl}`, requestBody);
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      let errorBodyText = '';
-      try {
-        errorBodyText = await response.text();
-      } catch (e) { /* 본문 읽기 실패는 무시 */ }
-      const errorMessage = `HTTP 오류! 상태: ${response.status}${errorBodyText ? `, 내용: ${errorBodyText}` : ''}`;
-      console.error('쿼리 전송 실패:', errorMessage);
-      throw new Error(errorMessage);
-    }
-
-    const responseData = await response.json(); // API가 JSON 응답을 반환한다고 가정
-    console.log('쿼리 응답 수신:', responseData);
-    return responseData;
-  } catch (error) {
-    console.error('쿼리 전송 중 예외 발생:', error);
-    throw error;
-  }
-}
-
-
-// 개별 상품 카드 컴포넌트
-const ProductCard = ({ product }) => {
+// Product Card Component
+const ProductCard = ({ name, price, currency, stockInfo, imageUrl, category, productUrl }) => {
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 flex-shrink-0 w-64 md:w-72 m-2 hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between">
-      <div>
-        <img 
-          src={product.image} 
-          alt={product.name} 
-          className="w-full h-40 object-contain rounded-md mb-3 bg-gray-100"
-          onError={(e) => { 
-            e.target.onerror = null; 
-            e.target.src="https://placehold.co/300x200/E5E7EB/9CA3AF?text=Image+Not+Available&font=sans"; 
-          }}
-        />
-        <div className="flex items-center text-xs text-gray-500 mb-1">
-          {product.icon}
-          <span>{product.type}</span>
-        </div>
-        <h3 className="text-base font-semibold text-gray-800 mb-1 h-12 overflow-hidden" title={product.name}>
-            {product.name}
-        </h3>
-        <p className="text-sm font-bold text-purple-700 mb-1">{product.price}</p>
-        <p className="text-xs text-gray-600 mb-3 h-8 overflow-hidden">{product.description}</p>
+    <div className="bg-white rounded-xl shadow-lg p-4 w-72 md:w-80 flex-shrink-0 flex flex-col hover:shadow-xl transition-shadow duration-300">
+      <div className="w-full h-52 bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+        {imageUrl && imageUrl !== "https://shop.googlemerchandisestore.com/store/20160512512/assets/items/images/noimage.jpg" ? (
+          <img src={imageUrl} alt={name} className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/300x300/E8E8E8/B0B0B0?text=No+Image&font=sans-serif"; }}/>
+        ) : (
+           <img src="https://placehold.co/300x300/E8E8E8/B0B0B0?text=No+Image&font=sans-serif" alt={name} className="w-full h-full object-cover" />
+        )}
       </div>
-      <a
-        href={product.detailsLink}
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="text-sm font-medium text-purple-600 hover:text-purple-800 transition-colors duration-300 mt-auto block text-center py-2 bg-purple-100 hover:bg-purple-200 rounded-md"
-      >
-        상품 보기 &gt;
-      </a>
+      <div className="flex items-center text-sm text-purple-600 mb-1">
+        <Gift size={16} className="mr-2" />
+        <span>{category || "Category"}</span>
+      </div>
+      <h3 className="text-lg font-semibold text-gray-800 mb-1 truncate h-7" title={name}>{name}</h3>
+      <div className="mt-auto">
+        <p className="text-xl font-bold text-purple-700 mb-1">
+          {price} <span className="text-sm font-normal">{currency}</span>
+        </p>
+        <p className={`text-xs mb-3 h-4 ${stockInfo.startsWith("In stock") ? 'text-green-600' : 'text-red-500'}`}>{stockInfo}</p>
+        <a
+          href={productUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full text-center bg-fuchsia-200 hover:bg-fuchsia-300 text-purple-700 font-medium py-2.5 px-4 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
+        >
+          View Product &gt;
+        </a>
+      </div>
     </div>
   );
 };
 
-// 상품 캐러셀 컴포넌트
-const ProductCarousel = ({ products }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [visibleProducts, setVisibleProducts] = useState(2);
+// API 응답 상품 데이터를 ProductCard props 형식으로 변환하는 헬퍼 함수
+const formatApiProducts = (apiProductItems) => {
+  if (!Array.isArray(apiProductItems)) {
+    console.warn("formatApiProducts: input is not an array", apiProductItems);
+    return [];
+  }
+  return apiProductItems.map(item => {
+    const [priceValue, currencyValue] = item.price ? item.price.split(" ") : ["N/A", ""];
+    return {
+      id: item.id,
+      name: item.title,
+      price: priceValue,
+      currency: currencyValue,
+      stockInfo: item.availability > 0 ? `In stock (${item.availability})` : "Out of stock",
+      imageUrl: item.image,
+      category: item.categories, // API 응답에 categories 필드 사용
+      productUrl: item.url,
+      availability: item.availability
+    };
+  });
+};
+
+
+// Main Agent UI Component
+const AgentUI = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [chatMessages, setChatMessages] = useState([]);
+  // const [allProducts, setAllProducts] = useState([]); // 전체 상품 목록은 이제 API 검색 결과로 대체될 수 있음
+  const [searchResults, setSearchResults] = useState([]); 
+  const [showSearchResultsSection, setShowSearchResultsSection] = useState(false); 
+  
+  const [sessionId, setSessionId] = useState(null);
+  const [userName, setUserName] = useState("user_123"); 
+
+  const scrollContainerRef = useRef(null);
+  const chatContainerRef = useRef(null);
+
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:8080"; 
+
+  // newProductData는 이제 API 호출로 대체되므로 주석 처리하거나 제거 가능
+  // const newProductData = { items: [ /* ... */ ] };
+
+  const createNewSession = async (currentSessionId, currentUserName) => {
+    if (!currentSessionId || !currentUserName) {
+        console.error("createNewSession: Session ID or User Name is missing.");
+        return; 
+    }
+    const apiUrl = `${API_BASE_URL}/apps/catalog_agent/users/${currentUserName}/sessions/${currentSessionId}`;
+    console.log(`Creating new session: POST ${apiUrl}`); 
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (response.ok) {
+        const responseText = await response.text();
+        try { const jsonData = JSON.parse(responseText); console.log('New session created successfully:', jsonData); } 
+        catch (e) { console.log('New session POST successful. Response (not JSON or empty):', responseText || "Empty response"); }
+      } else { 
+        const errorText = await response.text(); 
+        console.error('Failed to create new session. Status:', response.status, 'Response:', errorText);
+      }
+    } catch (error) { console.error('Error during createNewSession API call:', error); }
+  };
+  
+  const searchCatalog = async (userInput, currentSessionId, currentUserName) => {
+    if (!userInput || !currentSessionId || !currentUserName) {
+      console.error("searchCatalog: User input, Session ID, or User Name is missing.");
+      setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: "Sorry, there was an error with my internal system. Please try again." }]);
+      return;
+    }
+    const apiUrl = `${API_BASE_URL}/run`;
+    const requestBody = {
+      app_name: "catalog_agent",
+      user_id: currentUserName,
+      session_id: currentSessionId,
+      new_message: {
+        role: "user",
+        parts: [{ text: userInput }]
+      },
+      streaming: false
+    };
+    console.log(`Searching catalog: POST ${apiUrl}`, requestBody);
+    setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Searching for "${userInput}"...` }]);
+    setShowSearchResultsSection(false); // 이전 검색 결과 숨기기
+    setSearchResults([]); // 이전 검색 결과 초기화
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        const apiResponseArray = await response.json(); // API 응답은 배열 형태
+        console.log('Search catalog response (raw array):', apiResponseArray);
+
+        let productsFound = [];
+
+        if (Array.isArray(apiResponseArray)) {
+          apiResponseArray.forEach(responseItem => {
+            if (responseItem.content && Array.isArray(responseItem.content.parts)) {
+              responseItem.content.parts.forEach(part => {
+                if (part.functionResponse && part.functionResponse.name === "call_catalog_search") { //
+                  try {
+                    const resultJson = JSON.parse(part.functionResponse.response.result); //
+                    if (resultJson && Array.isArray(resultJson.items)) {
+                      productsFound = formatApiProducts(resultJson.items); //
+                      console.log("Formatted products from API:", productsFound);
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse functionResponse result JSON:", e);
+                  }
+                }
+              });
+            }
+          });
+        }
+        
+
+        
+        if (productsFound.length > 0) {
+          setSearchResults(productsFound);
+          setShowSearchResultsSection(true);
+        }
+
+      } else {
+        const errorData = await response.json().catch(() => ({ message: "Failed to parse error response from search" }));
+        console.error('Failed to search catalog:', response.status, errorData);
+        setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Sorry, I encountered an error while searching: ${errorData.message || response.statusText}` }]);
+      }
+    } catch (error) {
+      console.error('Error during searchCatalog API call:', error);
+      setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: `Sorry, a network error occurred: ${error.message}` }]);
+    }
+  };
 
   useEffect(() => {
-    const updateVisibleProducts = () => {
-      if (window.innerWidth < 768) {
-        setVisibleProducts(1);
-      } else if (window.innerWidth < 1024) {
-        setVisibleProducts(2); 
-      }
-      else {
-        setVisibleProducts(2); 
-      }
-    };
-    updateVisibleProducts();
-    window.addEventListener('resize', updateVisibleProducts);
-    return () => window.removeEventListener('resize', updateVisibleProducts);
-  }, []);
+    const initialSessionId = crypto.randomUUID(); 
+    setSessionId(initialSessionId); 
+    if (userName) { 
+        createNewSession(initialSessionId, userName); 
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userName]); 
 
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev === 0 ? Math.max(0, products.length - visibleProducts) : prev - 1));
+  // 상품 데이터 초기화 로직은 API 호출로 대체되었으므로 주석 처리 또는 제거
+  // useEffect(() => {
+  //   const formattedProducts = newProductData.items.map(item => { /* ... */ });
+  //   setAllProducts(formattedProducts);
+  // }, []);
+
+ useEffect(() => {
+    if (chatContainerRef.current) { chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; }
+  }, [chatMessages]);
+
+  const scroll = (direction) => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 300; 
+      scrollContainerRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
   };
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev >= products.length - visibleProducts ? 0 : prev + 1));
+  const handleSearchChange = (event) => { setSearchTerm(event.target.value); };
+  const clearSearch = () => { setSearchTerm(""); };
+
+  const handleSubmitSearch = async (event) => {
+    event.preventDefault();
+    const trimmedUserInput = searchTerm.trim();
+    if (trimmedUserInput) {
+      setChatMessages(prevMessages => [...prevMessages, { type: 'user', text: trimmedUserInput }]);
+      setSearchTerm("");
+      
+      await searchCatalog(trimmedUserInput, sessionId, userName);
+      // 클라이언트 측 필터링 로직 제거, API 응답으로 searchResults가 채워짐
+    }
   };
   
-  const disablePrev = currentIndex === 0;
-  const disableNext = currentIndex >= Math.max(0, products.length - visibleProducts) || products.length <= visibleProducts;
+  const handleNewConversation = () => {
+    setChatMessages([]);
+    setSearchTerm("");
+    setSearchResults([]);
+    setShowSearchResultsSection(false);
+    const newSessionId = crypto.randomUUID();
+    setSessionId(newSessionId);
+    if (userName) { 
+        createNewSession(newSessionId, userName); 
+    }
+  };
 
-  if (!products || products.length === 0) {
-    return <div className="text-center py-4 text-gray-500">추천 상품이 없습니다.</div>;
+  const availableSearchResultsCount = searchResults.filter(p => p.availability > 0).length;
+  let searchResultsInfoText = "";
+  if (showSearchResultsSection && searchResults.length > 0) { 
+    searchResultsInfoText = `Found ${searchResults.length} product(s) matching your search.`;
+    const outOfStockCount = searchResults.length - availableSearchResultsCount;
+    if (availableSearchResultsCount === searchResults.length) { searchResultsInfoText += " (All in stock)"; } 
+    else if (availableSearchResultsCount === 0) { searchResultsInfoText += " (All out of stock)"; } 
+    else { searchResultsInfoText += ` (${availableSearchResultsCount} in stock, ${outOfStockCount} out of stock)`; }
   }
-  
+
   return (
-    <div className="relative w-full py-4">
-      <div className="overflow-hidden">
-        <div
-          className="flex transition-transform duration-500 ease-in-out"
-          style={{ transform: `translateX(-${currentIndex * (100 / visibleProducts)}%)` }} 
-        >
-          {products.map((product) => (
-            <div key={product.id} style={{ flex: `0 0 ${100 / visibleProducts}%` }} className="px-1 flex-shrink-0">
-              <ProductCard product={product} />
+    <div className="flex flex-col h-screen bg-purple-50 font-sans antialiased">
+      <header className="bg-purple-600 text-white p-4 flex justify-between items-center shadow-md flex-shrink-0 sticky top-0 z-20">
+        <div className="flex flex-col"> <h1 className="text-xl font-semibold">Product Catalog Agent</h1> </div>
+        <button onClick={handleNewConversation} className="flex items-center bg-purple-500 hover:bg-purple-400 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-300">
+          <Plus size={20} className="mr-1 sm:mr-2" /> New Conversation
+        </button>
+      </header>
+
+      <main ref={chatContainerRef} className="flex-grow p-4 md:p-6 overflow-y-auto">
+        {chatMessages.length === 0 && !showSearchResultsSection && (
+            <div className="bg-fuchsia-100 text-gray-700 p-4 rounded-lg mb-6 shadow flex items-start">
+                <MessageSquare size={24} className="text-purple-600 mr-3 flex-shrink-0 mt-1" />
+                <p> Please enter what you are looking for in the product catalog. </p>
+            </div>
+        )}
+        <div className="space-y-4 mb-6">
+          {chatMessages.map((msg, index) => (
+            <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-xl p-3 rounded-lg shadow ${ msg.type === 'user' ? 'bg-purple-500 text-white' : 'bg-white text-gray-700' }`}>
+                {/* 봇 메시지가 Markdown 테이블일 경우, 스타일링이 필요할 수 있습니다. 여기서는 텍스트로만 표시됩니다. */}
+                <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
+              </div>
             </div>
           ))}
         </div>
-      </div>
-      {products.length > visibleProducts && (
-        <>
-          <button
-            onClick={prevSlide}
-            disabled={disablePrev}
-            className={`absolute top-1/2 left-0 transform -translate-y-1/2 -translate-x-4 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition-colors duration-300 z-10 ${disablePrev ? 'opacity-50 cursor-not-allowed' : ''}`}
-            aria-label="이전 상품"
-          >
-            <ChevronLeft className="w-6 h-6 text-purple-600" />
-          </button>
-          <button
-            onClick={nextSlide}
-            disabled={disableNext}
-            className={`absolute top-1/2 right-0 transform -translate-y-1/2 translate-x-4 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition-colors duration-300 z-10 ${disableNext ? 'opacity-50 cursor-not-allowed' : ''}`}
-            aria-label="다음 상품"
-          >
-            <ChevronRight className="w-6 h-6 text-purple-600" />
-          </button>
-        </>
-      )}
-    </div>
-  );
-};
-
-// 채팅 메시지 버블 컴포넌트
-const ChatBubble = ({ children, isUser = false, onButtonClick, buttonText }) => {
-  return (
-    <div className={`flex mb-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-3 rounded-xl shadow ${isUser ? 'bg-purple-600 text-white rounded-br-none' : 'bg-purple-100 text-gray-800 rounded-bl-none'}`}>
-        {children}
-        {/* 추천 상품이 항상 표시되므로 버튼은 더 이상 필요하지 않을 수 있습니다. 
-            필요에 따라 이 버튼 로직을 완전히 제거하거나 수정할 수 있습니다. */}
-        {buttonText && onButtonClick && (
-          <button
-            onClick={onButtonClick}
-            className="mt-2 block w-full text-left bg-purple-500 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition-colors duration-300 text-sm"
-          >
-            {buttonText}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// 메시지 입력 컴포넌트
-const MessageInput = ({ onSend }) => {
-  const [message, setMessage] = useState('');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (message.trim()) {
-      onSend(message.trim());
-      setMessage('');
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-gray-200 sticky bottom-0">
-      <div className="flex items-center bg-purple-50 rounded-lg p-1">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="검색어 입력"
-          className="flex-grow p-2 bg-transparent text-gray-700 placeholder-gray-500 focus:outline-none"
-          aria-label="검색어 입력창"
-        />
-        <button
-          type="submit"
-          className="p-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors duration-300 disabled:opacity-50"
-          disabled={!message.trim()}
-          aria-label="검색" 
-        >
-          <Send className="w-5 h-5" /> 
-        </button>
-      </div>
-    </form>
-  );
-};
-
-// 메인 앱 컴포넌트
-export default function App() {
-  const [currentProducts, setCurrentProducts] = useState(initialProducts); 
-  // showProducts 상태를 true로 초기화하여 처음부터 상품 표시
-  const [showProducts, setShowProducts] = useState(true); 
-  const [messages, setMessages] = useState([
-    { 
-      id: 1, 
-      // 초기 메시지 변경: 상품이 이미 표시됨을 알림
-      text: "안녕하세요! 아래에서 추천 상품을 확인하시거나 검색어를 입력하여 제품을 찾아보세요. 😊", 
-      isUser: false,
-      // showButton: true, // 버튼을 더 이상 표시하지 않음
-    }
-  ]);
-
-  // handleShowProducts 함수는 더 이상 초기 메시지 버튼에 의해 호출되지 않으므로,
-  // 필요에 따라 다른 용도로 사용하거나 제거할 수 있습니다.
-  // 여기서는 일단 유지하되, 초기 메시지에서는 호출되지 않도록 수정했습니다.
-  const handleShowProducts = () => {
-    setCurrentProducts(initialProducts); 
-    setShowProducts(true);
-    // 메시지에서 버튼을 제거했으므로, 이 부분은 더 이상 필요 없을 수 있습니다.
-    // setMessages(prevMessages => 
-    //   prevMessages.map(msg => msg.id === 1 ? { ...msg, showButton: false } : msg)
-    // );
-  };
-
-  const handleSendMessage = async (text) => {
-    const userId = 'user_123'; // Hardcoded user ID as requested
-
-    // Add user's message to the UI immediately
-    const newUserMessage = {
-      id: uuidv4(), 
-      text: text,
-      isUser: true,
-    };
-    setMessages(prevMessages => [...prevMessages, newUserMessage]);
-
-    try {
-      // 1. Call createSession to get a sessionId
-      // createSession already logs its own progress and errors to the console
-      const sessionId = await createSession(userId); 
-
-      if (sessionId) {
-        // 2. If session creation is successful, call sendQuery
-        // sendQuery also logs its own progress and errors to the console
-        const queryResponse = await sendQuery(text, sessionId, userId);
-        
-        // 3. Log the response from sendQuery to the console, as specifically requested
-        console.log('handleSendMessage: Response from sendQuery:', queryResponse);
-
-        // Note: As per the request, the bot's actual response content is only logged here.
-        // To display the bot's response in the UI, you would add another setMessages call here,
-        // parsing queryResponse to extract the message text. For example:
-        // if (queryResponse && queryResponse.parts && queryResponse.parts[0]?.text) { // Adjust based on actual response structure
-        //   const botMessage = { id: uuidv4(), text: queryResponse.parts[0].text, isUser: false };
-        //   setMessages(prev => [...prev, botMessage]);
-        // }
-
-      } else {
-        // This case is less likely if createSession throws on failure, but included for robustness.
-        console.error('handleSendMessage: Failed to obtain sessionId from createSession.');
-        const errorUiMessage = {
-          id: uuidv4(),
-          text: 'Error: Could not establish a session. Please try sending your message again.',
-          isUser: false,
-        };
-        setMessages(prevMessages => [...prevMessages, errorUiMessage]);
-      }
-    } catch (error) {
-      // Catches errors from createSession or sendQuery
-      console.error('handleSendMessage: An error occurred during API calls:', error);
-      const errorUiMessage = {
-        id: uuidv4(),
-        text: `Error: ${error.message || 'Failed to process your request. Please try again.'}`,
-        isUser: false, 
-      };
-      setMessages(prevMessages => [...prevMessages, errorUiMessage]);
-    }
-  };
-  
-
-  return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto bg-gray-50 shadow-2xl rounded-lg overflow-hidden font-sans">
-      <header className="bg-purple-600 text-white p-4 flex items-center justify-center sticky top-0 z-20 shadow-md">
-        <div>
-          <h1 className="text-xl font-semibold whitespace-nowrap">제품 카달로그 검색</h1>
-        </div>
-      </header>
-
-      <main className="flex-grow p-4 space-y-2 overflow-y-auto">
-        {messages.map((msg) => (
-          <ChatBubble 
-            key={msg.id} 
-            isUser={msg.isUser}
-            // 버튼 관련 props 제거 또는 수정 (여기서는 null로 전달)
-            onButtonClick={null} 
-            buttonText={null}
-          >
-            {msg.text}
-          </ChatBubble>
-        ))}
-        
-        {/* showProducts가 true이므로 항상 ProductCarousel이 렌더링됨 */}
-        {showProducts && (
-          <div className="my-4">
-            <ProductCarousel products={currentProducts} /> 
+        {showSearchResultsSection && searchResults.length > 0 && (
+          <div className="relative mb-6">
+            <h2 className="text-2xl font-semibold text-gray-700 mb-1 ml-1">Search Results</h2>
+            {searchResultsInfoText && ( <p className="text-sm text-gray-500 mb-4 ml-1">{searchResultsInfoText}</p> )}
+            <div className="flex items-center"> 
+                <button title="Previous Product" onClick={() => scroll('left')} className="absolute left-0 top-1/2 transform -translate-y-1/2 z-10 p-2 ml-[-10px] md:ml-[-15px] rounded-full bg-white/80 hover:bg-white text-purple-600 shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400" style={{ marginTop: '2.5rem' }} > <ChevronLeft size={28} /> </button>
+                <div ref={scrollContainerRef} className="flex items-stretch space-x-4 overflow-x-auto pb-4 pt-2 scrollbar-hide">
+                    {searchResults.map((product) => ( 
+                      <ProductCard key={product.id} name={product.name} price={product.price} currency={product.currency} stockInfo={product.stockInfo} imageUrl={product.imageUrl} category={product.category} productUrl={product.productUrl} />
+                    ))}
+                    <div className="flex-shrink-0 w-1"></div> 
+                </div>
+                <button title="Next Product" onClick={() => scroll('right')} className="absolute right-0 top-1/2 transform -translate-y-1/2 z-10 p-2 mr-[-10px] md:mr-[-15px] rounded-full bg-white/80 hover:bg-white text-purple-600 shadow-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400" style={{ marginTop: '2.5rem' }} > <ChevronRight size={28} /> </button>
+            </div>
           </div>
         )}
       </main>
 
-      <MessageInput onSend={handleSendMessage} />
+      <footer className="bg-white p-3 border-t border-gray-200 flex-shrink-0 sticky bottom-0 z-20">
+        <form onSubmit={handleSubmitSearch} className="flex items-center bg-fuchsia-100 rounded-lg p-1 shadow-sm focus-within:ring-2 focus-within:ring-purple-400 transition-shadow">
+          <Search size={20} className="text-gray-500 mx-3" />
+          <input type="text" value={searchTerm} onChange={handleSearchChange} placeholder="Search product catalog" className="flex-grow p-3 bg-transparent text-gray-700 placeholder-gray-500 focus:outline-none" />
+          {searchTerm && ( <button type="button" onClick={clearSearch} className="text-gray-500 hover:text-gray-700 p-2 mr-1 rounded-full" title="Clear search" > <X size={20} /> </button> )}
+          <button type="submit" title="Search" className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-lg ml-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50" disabled={!searchTerm.trim()} > <Send size={20} /> </button>
+        </form>
+      </footer>
     </div>
   );
-}
+};
+
+export default AgentUI;

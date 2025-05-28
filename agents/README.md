@@ -110,7 +110,7 @@ export APP_URL="<Cloud Run Service URL>"
 curl -X POST $APP_URL/apps/catalog_agent/users/user_123/sessions/session_abc \
     -H "Content-Type: application/json" 
 
-curl -X POST $APP_URL/run_sse \
+curl -X POST $APP_URL/run \
     -H "Content-Type: application/json" \
     -d '{                                                              
     "app_name": "catalog_agent",
