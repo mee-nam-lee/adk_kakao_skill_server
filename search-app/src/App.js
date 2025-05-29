@@ -69,14 +69,13 @@ const AgentUI = () => {
 
   const chatContainerRef = useRef(null); 
 
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL | ""; 
-
   const createNewSession = async (currentSessionId, currentUserName) => {
     if (!currentSessionId || !currentUserName) {
         console.error("createNewSession: Session ID or User Name is missing.");
         return; 
     }
-    const apiUrl = `${API_BASE_URL}/apps/catalog_agent/users/${currentUserName}/sessions/${currentSessionId}`;
+    
+    const apiUrl = `/apps/catalog_agent/users/${currentUserName}/sessions/${currentSessionId}`;
     console.log(`Creating new session: POST ${apiUrl}`); 
     try {
       const response = await fetch(apiUrl, {
@@ -100,7 +99,8 @@ const AgentUI = () => {
       setChatMessages(prevMessages => [...prevMessages, { type: 'bot', text: "Sorry, there was an error with my internal system. Please try again." }]);
       return;
     }
-    const apiUrl = `${API_BASE_URL}/run`;
+    
+    const apiUrl = `/run`;
     const requestBody = {
       app_name: "catalog_agent",
       user_id: currentUserName,
