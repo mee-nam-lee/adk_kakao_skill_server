@@ -1,6 +1,8 @@
 # genai-hackathon-adk
 Generative AI Hackathon Task 6: ADK(Agent Development Kit)
 
+This agent is using a Google Cloud Search for Commerce API. So you need to setup it first. [Interactive tutorials](https://cloud.google.com/retail/docs/retail-api-tutorials)
+
 ## Set up and install 
 
 1. [Install and initialize](https://cloud.google.com/sdk/docs/install) the Google Cloud CLI.
@@ -32,13 +34,28 @@ Generative AI Hackathon Task 6: ADK(Agent Development Kit)
 1. Update .env file
     ```bash
     GOOGLE_GENAI_USE_VERTEXAI=TRUE
-    GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID
-    GOOGLE_CLOUD_LOCATION=LOCATION
+    GOOGLE_CLOUD_PROJECT=<YOUR_PROJECT_ID>
+    GOOGLE_CLOUD_LOCATION=us-central
+    SEARCH_SERVING_CONFIG_ID=test-search-config
+    MODEL=gemini-2.0-flash-001
     ```
 1. start with Dev UI(adk web)
     Run the following command to launch the developer Web UI.
     ```bash
     adk web
+    ```
+    output: 
+    ```
+    INFO:     Started server process [2434]
+    INFO:     Waiting for application startup.
+    +-------------------------------------------------------+
+    | ADK Web Server started                                |
+    |                                                       |
+    | For local testing, access at http://localhost:8000.   |
+    +-------------------------------------------------------+
+
+    INFO:     Application startup complete.
+    INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
     ```
 
 1. Open the URL provided (usually http://localhost:8000 or http://127.0.0.1:8000) directly in your browser.
@@ -105,11 +122,16 @@ Service URL: https://catalog-agent-790012362778.us-central1.run.app
 
 Use the Service URL. 
 
+#### create session
+
 ```
 export APP_URL="<Cloud Run Service URL>"
 curl -X POST $APP_URL/apps/catalog_agent/users/user_123/sessions/session_abc \
     -H "Content-Type: application/json" 
+```
 
+#### call agent
+```
 curl -X POST $APP_URL/run \
     -H "Content-Type: application/json" \
     -d '{                                                              
