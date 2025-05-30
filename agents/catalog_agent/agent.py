@@ -1,14 +1,14 @@
-import datetime
-from zoneinfo import ZoneInfo
+import os
 from google.adk.agents import Agent
 
 from .prompt import return_instructions_root
 from .tools import call_catalog_search
 
+model = os.environ.get("MODEL", "gemini-2.0-flash")
 
 root_agent = Agent(
     name="catalog_agent",
-    model="gemini-2.0-flash",
+    model=model,
     description=(
         "Agent to search the product catalog."
     ),

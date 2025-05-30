@@ -3,14 +3,17 @@ from google.adk.tools.agent_tool import AgentTool
 import google.auth
 from google.cloud.retail import SearchRequest, SearchServiceClient, ProductServiceClient, GetProductRequest
 import json
+import os
 
 project_id = google.auth.default()[1]
+serving_config_name = os.environ.get('SERVING_CONFIG_NAME', 'default_search')
 
 def get_search_request(query: str):
     default_search_placement = (
         "projects/"
         + project_id
-        + "/locations/global/catalogs/default_catalog/placements/default_search"
+        + "/locations/global/catalogs/default_catalog/placements/"
+        + serving_config_name
     )
 
     search_request = SearchRequest()
@@ -59,5 +62,5 @@ def call_catalog_search(query: str,) -> str:
                 }
             products.append(item)
             
-    # print(json.dumps({ "items": products }))
+    print(json.dumps({ "items": products }))
     return json.dumps({ "items": products })
