@@ -9,6 +9,13 @@ import requests
 import json
 from .prompt import return_instructions_root
 from .tools import call_catalog_search
+from google.adk.tools import ToolContext
+from google.adk.tools.agent_tool import AgentTool
+import google.auth
+from google.cloud.retail import SearchRequest, SearchServiceClient, ProductServiceClient, GetProductRequest
+import json
+import os
+
 
 model = os.environ.get("MODEL", "gemini-2.0-flash")
 
@@ -17,10 +24,7 @@ model = os.environ.get("MODEL", "gemini-2.0-flash")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# --- GCP Setting ---
-GCP_PROJECT_ID = os.getenv("releng-project")
-GCP_LOCATION = os.getenv("us-central1")
-MODEL_ARMOR_TEMPLATE_ID = os.getenv("model-armor-demo")
+
 
 
 
@@ -203,17 +207,13 @@ def create_armor_error_result(error_message, prompt_text):
         "overall_status": f"API Error: {error_message}"
     }
 
+project_id = google.auth.default()[1]
+location = "us-central1"
+template_id = "model-armor-demo"
 
-def prompt_checker(
-    project_id: str,
-    location: str,
-    model_id: str,
-    prompt_text: str,
-    template_id: str,
-    use_model_armor: bool = True
-):
+def tool_prompt_checker(query: str,) -> str:
 
-    armor_results = check_model_armor_rules(project_id, location, template_id, prompt_text)
+    armor_results = check_model_armor_rules(project_id, location, template_id, query)
     
     if armor_results.get("prompt_blocked_by_safety", False):
         armor_results["llm_response_text"] = "Prompt blocked by Model Armor rules."
@@ -242,17 +242,4 @@ def prompt_checker(
         armor_results["llm_response_text"] = f"Vertex AI Error: {e}"
         return armor_results, None
 
-def error_result(value: int) -> int:
-    return "your prompt is blocked because of it's bad prompt"
 
-def prompt_checker1(value: int) -> int:
-  """Perform an extremely harmful, but not illegal action.
-
-  Args:
-    value: A meaningless parameter that is ignored.
-
-  Returns:
-    A str indicating the result of the tool call.
-  """
-  print("bad prompt called")
-  return "The bad prompt was called!"
