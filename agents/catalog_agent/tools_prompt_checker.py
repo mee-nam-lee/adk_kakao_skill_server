@@ -17,15 +17,9 @@ import json
 import os
 
 
-model = os.environ.get("MODEL", "gemini-2.0-flash")
-
-
 # logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-
 
 
 # --- Model Armor REST API  ---
@@ -218,28 +212,3 @@ def tool_prompt_checker(query: str,) -> str:
     if armor_results.get("prompt_blocked_by_safety", False):
         armor_results["llm_response_text"] = "Prompt blocked by Model Armor rules."
         return armor_results, None
- 
-    try:
-        vertexai.init(project=project_id, location=location)
-        model = GenerativeModel(model_id)
-        
-        logger.info(f"Calling Vertex AI model {model_id} after Model Armor check...")
-        response = model.generate_content(contents=[prompt_text])
-        
-        if response.candidates and response.candidates[0].content:
-            llm_response_text = "".join(
-                part.text for part in response.candidates[0].content.parts 
-                if hasattr(part, 'text')
-            )
-            armor_results["llm_response_text"] = llm_response_text
-        else:
-            armor_results["llm_response_text"] = "No response generated from LLM."
-        
-        return armor_results, response
-        
-    except Exception as e:
-        logger.error(f"Error calling Vertex AI: {e}")
-        armor_results["llm_response_text"] = f"Vertex AI Error: {e}"
-        return armor_results, None
-
-
