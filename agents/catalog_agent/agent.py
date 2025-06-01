@@ -14,5 +14,19 @@ root_agent = Agent(
         "Agent to search the product catalog."
     ),
     instruction=return_instructions_root(),
-    tools=[call_catalog_search,tool_prompt_checker],
+    tools=[call_catalog_search],
 )
+
+##################################
+# Task 7: Enhance the conversational product search Agent created in Task 6 
+# by adding a prompt sanitization feature using Model Armor, referencing the commented-out content below.
+# 
+# root_agent = Agent(
+#     name="catalog_agent",
+#     model=model,
+#     description=(
+#         "Agent to search the product catalog."
+#     ),
+#     instruction=return_instructions_root(),
+#     tools=[call_catalog_search,tool_prompt_checker],
+# )
