@@ -183,15 +183,8 @@ const AgentUI = () => {
                   botTextResponse = part.text;
                   console.log("Found text part:", part.text);
                   const safetyBlockedPhrases = [
-                    "I am unable to fulfill that request",
-                    "I am programmed to be a harmless AI assistant",
-                    "I am sorry, I cannot fulfill this request",
                     "blocked",
                     "Prompt blocked",
-                    "safety policies",
-                    "safety reasons",
-                    "harmful content",
-                    "I will not respond to abusive"
                   ];
                   
                   const isBlocked = safetyBlockedPhrases.some(phrase => 
@@ -209,10 +202,10 @@ const AgentUI = () => {
           });
         }  
         // 추가 로직: function call이 전혀 없고 텍스트 응답만 있으면 blocked로 간주
-        if (!hasAnyFunctionCall && botTextResponse && !isPromptBlocked) {
-          console.log("No function calls detected, treating as potential safety block");
-          isPromptBlocked = true;
-        }
+        // if (!hasAnyFunctionCall && botTextResponse && !isPromptBlocked) {
+        //   console.log("No function calls detected, treating as potential safety block");
+        //   isPromptBlocked = true;
+        //}
       
         console.log("Final state - isPromptBlocked:", isPromptBlocked, "hasFunctionResponse:", hasFunctionResponse, "hasAnyFunctionCall:", hasAnyFunctionCall, "productsFound:", productsFound.length);
                      
