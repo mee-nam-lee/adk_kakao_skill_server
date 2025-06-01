@@ -211,4 +211,6 @@ def tool_prompt_checker(query: str,) -> str:
     
     if armor_results.get("prompt_blocked_by_safety", False):
         armor_results["llm_response_text"] = "Prompt blocked by Model Armor rules."
-        return armor_results, None
+        
+    # JSON 문자열로 반환
+    return json.dumps(armor_results)

@@ -128,11 +128,43 @@ const AgentUI = () => {
 
         let productsFound = []; 
         let hasFunctionResponse = false; // functionResponse가 있었는지 여부 확인
+        let isPromptBlocked = false; // 추가: prompt가 blocked되었는지 확인
+        let hasAnyFunctionCall = false; // 어떤 function call이라도 있었는지 확인
+        let botTextResponse = ""; // Agent의 텍스트 응답 저장
 
         if (Array.isArray(apiResponseArray)) {
           apiResponseArray.forEach(responseItem => {
             if (responseItem.content && Array.isArray(responseItem.content.parts)) {
               responseItem.content.parts.forEach(part => {
+                // 모든 function call 확인
+                if (part.functionCall) {
+                  hasAnyFunctionCall = true;
+                  console.log("Found function call:", part.functionCall);
+                }
+                // tool_prompt_checker의 결과 확인
+                if (part.functionResponse && part.functionResponse.name === "tool_prompt_checker") {
+                  console.log("Found tool_prompt_checker response:", part.functionResponse);
+                  try {
+                    let checkerResult;
+                    // response.result가 이미 객체인지 문자열인지 확인
+                    if (typeof part.functionResponse.response.result === 'string') {
+                      checkerResult = JSON.parse(part.functionResponse.response.result);
+                    } else {
+                      checkerResult = part.functionResponse.response.result;
+                    }
+                    
+                    console.log("Parsed checker result:", checkerResult);
+                    
+                    if (checkerResult && checkerResult.prompt_blocked_by_safety === true) {
+                      isPromptBlocked = true;
+                      console.log("Prompt blocked by Model Armor:", checkerResult);
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse tool_prompt_checker result:", e);
+                    console.error("Raw result:", part.functionResponse.response.result);
+                  }
+                }              
+                              
                 if (part.functionResponse && part.functionResponse.name === "call_catalog_search") {
                   hasFunctionResponse = true;
                   try {
@@ -145,24 +177,66 @@ const AgentUI = () => {
                     console.error("Failed to parse functionResponse result JSON:", e);
                   }
                 } 
+
+                // 텍스트 응답에서 Gemini 모델의 안전 필터 응답 감지
+                if (part.text) {
+                  botTextResponse = part.text;
+                  console.log("Found text part:", part.text);
+                  const safetyBlockedPhrases = [
+                    "I am unable to fulfill that request",
+                    "I am programmed to be a harmless AI assistant",
+                    "I am sorry, I cannot fulfill this request",
+                    "blocked",
+                    "Prompt blocked",
+                    "safety policies",
+                    "safety reasons",
+                    "harmful content",
+                    "I will not respond to abusive"
+                  ];
+                  
+                  const isBlocked = safetyBlockedPhrases.some(phrase => 
+                    part.text.toLowerCase().includes(phrase.toLowerCase())
+                  );
+                  
+                  if (isBlocked) {
+                    isPromptBlocked = true;
+                    console.log("Prompt blocked detected by Gemini safety filter in text response:", part.text);
+                  }
+                }           
                 // part.text 처리 로직은 제거 (botResponseText 변수 삭제)
               });
             }
           });
+        }  
+        // 추가 로직: function call이 전혀 없고 텍스트 응답만 있으면 blocked로 간주
+        if (!hasAnyFunctionCall && botTextResponse && !isPromptBlocked) {
+          console.log("No function calls detected, treating as potential safety block");
+          isPromptBlocked = true;
         }
-        
+      
+        console.log("Final state - isPromptBlocked:", isPromptBlocked, "hasFunctionResponse:", hasFunctionResponse, "hasAnyFunctionCall:", hasAnyFunctionCall, "productsFound:", productsFound.length);
+                     
         // "Searching for..." 메시지를 기본 응답으로 업데이트하거나, 상품 정보를 포함한 메시지로 업데이트
         setChatMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             const lastMessageIndex = updatedMessages.length - 1;
             if (lastMessageIndex >= 0 && updatedMessages[lastMessageIndex].type === 'bot' && updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
-                // 상품이 없을 경우 기본 완료 메시지, 있거나 functionResponse가 있었으면 해당 메시지 유지 (아래에서 상품 정보 추가)
+                // Prompt가 blocked된 경우
+                if (isPromptBlocked) {
+                  updatedMessages[lastMessageIndex] = { type: 'bot', text: "Your prompt has been blocked due to safety policies. Please try a different search query." };
+                  return updatedMessages; // early return to prevent further processing
+                }                                 
+              // 상품이 없을 경우 기본 완료 메시지, 있거나 functionResponse가 있었으면 해당 메시지 유지 (아래에서 상품 정보 추가)
                 if (!hasFunctionResponse && productsFound.length === 0) {
                      updatedMessages[lastMessageIndex] = { type: 'bot', text: "Search complete." };
                 } else if (productsFound.length === 0 && hasFunctionResponse) { // functionResponse는 있었지만 상품은 0개
                      updatedMessages[lastMessageIndex] = { type: 'bot', text: "I looked for products based on your query." };
-                }
+                } 
                 // 상품이 있으면 "Searching for..." 메시지는 아래 상품 정보 메시지로 대체될 것임
+            } else if (isPromptBlocked) {
+              // "Searching for..." 메시지가 없는 경우에도 prompt blocked 메시지 추가
+              updatedMessages.push({ type: 'bot', text: "Your prompt has been blocked due to safety policies. Please try a different search query." });
+              return updatedMessages;
             } else if (!hasFunctionResponse && productsFound.length === 0) {
                 updatedMessages.push({ type: 'bot', text: "Search complete." });
             }
