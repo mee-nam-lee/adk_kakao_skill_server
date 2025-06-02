@@ -4,6 +4,7 @@ import requests
 import google.auth
 from google.auth import default
 from google.auth.transport.requests import Request
+import os
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # Project configuration
 project_id = google.auth.default()[1]
-location = "us-central1"
+location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1") 
 template_id = "model-armor-demo"
 
 
