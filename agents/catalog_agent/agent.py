@@ -87,7 +87,7 @@ root_agent = Agent(
     description="An agent that searches the product catalog.",
     instruction=return_instructions_root(),
     tools=[call_catalog_search],
-    before_agent_callback=check_model_armor_rules
+    #before_agent_callback=check_model_armor_rules
 )
 
 ##################################
