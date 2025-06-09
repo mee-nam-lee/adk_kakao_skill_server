@@ -1,4 +1,25 @@
-google==3.0.0
-google-adk==1.0.0
-google-cloud-retail==2.1.0
-Jinja2==3.1.6
+# Google ADK latest version (v1.2.1 - production ready)
+google-adk>=1.2.0
+
+# Google GenerativeAI (provides types.Content, types.Part)
+google-generativeai>=0.8.0
+
+# Google Cloud authentication (latest stable version)
+google-auth>=2.30.0
+google-auth-oauthlib>=1.2.0
+
+# Google Cloud services
+google-cloud-retail>=1.15.0
+
+# HTTP client (latest security version)
+requests>=2.32.0
+
+# Web framework (for Cloud Run deployment)
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# Template engine (required by FastAPI/ADK)
+jinja2>=3.1.0
+
+# Additional FastAPI dependencies
+python-multipart>=0.0.6
