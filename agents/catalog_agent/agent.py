@@ -6,10 +6,12 @@ from typing import Optional
 from google.adk.agents import Agent
 from google.adk.agents.callback_context import CallbackContext
 from google.genai import types  # Content and Part are imported from here
+from google.adk.tools.agent_tool import AgentTool
 
 from .prompt import return_instructions_root
 from .tools import call_catalog_search
 from .model_armor import check_prompt_safety
+from .sub_agents.product_question.agent import product_question
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -85,6 +87,7 @@ root_agent = Agent(
     model=model,
     description="An agent that searches the product catalog.",
     instruction=return_instructions_root(),
-    tools=[call_catalog_search],
-    before_agent_callback=check_model_armor_rules
+    tools=[call_catalog_search, AgentTool(product_question)],
+    before_agent_callback=check_model_armor_rules,
+    output_key="search_result",
 )
