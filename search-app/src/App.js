@@ -51,7 +51,7 @@ const formatApiProducts = (apiProductItems) => {
       currency: currencyValue,
       stockInfo: item.availability > 0 ? `In stock (${item.availability})` : "Out of stock",
       imageUrl: item.image,
-      category: item.categories, 
+      category: item.categories,
       productUrl: item.url,
       availability: item.availability
     };
@@ -61,7 +61,7 @@ const formatApiProducts = (apiProductItems) => {
 // Helper function to detect Model Armor blocking
 const detectModelArmorBlocking = (apiResponseArray) => {
   console.log("Analyzing API response for Model Armor blocking:", apiResponseArray);
-  
+
   if (!Array.isArray(apiResponseArray)) {
     return { isBlocked: false, reason: "Invalid response format" };
   }
@@ -73,7 +73,7 @@ const detectModelArmorBlocking = (apiResponseArray) => {
         // Check for text responses that indicate blocking
         if (part.text) {
           const text = part.text.toLowerCase();
-          
+
           // Model Armor callback blocking patterns
           const blockingPatterns = [
             "sorry, the catalog search service is not available for this request due to safety policies",
@@ -84,13 +84,13 @@ const detectModelArmorBlocking = (apiResponseArray) => {
             "blocked by model armor",
             "not available for this request due to safety"
           ];
-          
+
           const isBlocked = blockingPatterns.some(pattern => text.includes(pattern));
-          
+
           if (isBlocked) {
             console.log("Model Armor blocking detected in text:", part.text);
-            return { 
-              isBlocked: true, 
+            return {
+              isBlocked: true,
               reason: "Safety policy violation",
               message: part.text
             };
@@ -108,17 +108,17 @@ const AgentUI = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [sessionId, setSessionId] = useState(null);
-  const userName = "user_123"; 
-  const chatContainerRef = useRef(null); 
+  const userName = "user_123";
+  const chatContainerRef = useRef(null);
 
   const createNewSession = async (currentSessionId, currentUserName) => {
     if (!currentSessionId || !currentUserName) {
         console.error("createNewSession: Session ID or User Name is missing.");
-        return; 
+        return;
     }
-    
+
     const apiUrl = `/apps/catalog_agent/users/${currentUserName}/sessions/${currentSessionId}`;
-    console.log(`Creating new session: POST ${apiUrl}`); 
+    console.log(`Creating new session: POST ${apiUrl}`);
     try {
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -126,31 +126,31 @@ const AgentUI = () => {
       });
       if (response.ok) {
         const responseText = await response.text();
-        try { 
-          const jsonData = JSON.parse(responseText); 
-          console.log('New session created successfully:', jsonData); 
-        } catch (e) { 
-          console.log('New session POST successful. Response (not JSON or empty):', responseText || "Empty response"); 
+        try {
+          const jsonData = JSON.parse(responseText);
+          console.log('New session created successfully:', jsonData);
+        } catch (e) {
+          console.log('New session POST successful. Response (not JSON or empty):', responseText || "Empty response");
         }
-      } else { 
-        const errorText = await response.text(); 
+      } else {
+        const errorText = await response.text();
         console.error('Failed to create new session. Status:', response.status, 'Response:', errorText);
       }
-    } catch (error) { 
-      console.error('Error during createNewSession API call:', error); 
+    } catch (error) {
+      console.error('Error during createNewSession API call:', error);
     }
   };
-  
+
   const searchCatalog = async (userInput, currentSessionId, currentUserName) => {
     if (!userInput || !currentSessionId || !currentUserName) {
       console.error("searchCatalog: User input, Session ID, or User Name is missing.");
-      setChatMessages(prevMessages => [...prevMessages, { 
-        type: 'bot', 
-        text: "Sorry, there was an error with my internal system. Please try again." 
+      setChatMessages(prevMessages => [...prevMessages, {
+        type: 'bot',
+        text: "Sorry, there was an error with my internal system. Please try again."
       }]);
       return;
     }
-    
+
     const apiUrl = `/run`;
     const requestBody = {
       app_name: "catalog_agent",
@@ -163,10 +163,10 @@ const AgentUI = () => {
       streaming: false
     };
     console.log(`Searching catalog: POST ${apiUrl}`, requestBody);
-    
-    setChatMessages(prevMessages => [...prevMessages, { 
-      type: 'bot', 
-      text: `Searching for "${userInput}"...` 
+
+    setChatMessages(prevMessages => [...prevMessages, {
+      type: 'bot',
+      text: `Searching for "${userInput}"...`
     }]);
 
     try {
@@ -177,30 +177,30 @@ const AgentUI = () => {
       });
 
       if (response.ok) {
-        const apiResponseArray = await response.json(); 
+        const apiResponseArray = await response.json();
         console.log('Search catalog response (raw array):', apiResponseArray);
 
         // Check for Model Armor blocking first
         const blockingCheck = detectModelArmorBlocking(apiResponseArray);
-        
+
         if (blockingCheck.isBlocked) {
           console.log("Model Armor blocking detected:", blockingCheck);
-          
+
           setChatMessages(prevMessages => {
             const updatedMessages = [...prevMessages];
             const lastMessageIndex = updatedMessages.length - 1;
-            
-            if (lastMessageIndex >= 0 && 
-                updatedMessages[lastMessageIndex].type === 'bot' && 
+
+            if (lastMessageIndex >= 0 &&
+                updatedMessages[lastMessageIndex].type === 'bot' &&
                 updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
-              updatedMessages[lastMessageIndex] = { 
-                type: 'bot', 
-                text: "🚫 Your search request cannot be processed due to safety policies. Please try a different search term." 
+              updatedMessages[lastMessageIndex] = {
+                type: 'bot',
+                text: "🚫 Your search request cannot be processed due to safety policies. Please try a different search term."
               };
             } else {
-              updatedMessages.push({ 
-                type: 'bot', 
-                text: "🚫 Your search request cannot be processed due to safety policies. Please try a different search term." 
+              updatedMessages.push({
+                type: 'bot',
+                text: "🚫 Your search request cannot be processed due to safety policies. Please try a different search term."
               });
             }
             return updatedMessages;
@@ -209,7 +209,8 @@ const AgentUI = () => {
         }
 
         // Continue with normal product processing if not blocked
-        let productsFound = []; 
+        let productsFound = [];
+        let productQuestionAnswer = null;
         let hasFunctionResponse = false;
         let hasAnyFunctionCall = false;
 
@@ -222,14 +223,21 @@ const AgentUI = () => {
                   hasAnyFunctionCall = true;
                   console.log("Found function call:", part.functionCall);
                 }
-                
+
+                // Process product question answers
+                if (part.functionResponse && part.functionResponse.name === "product_question") {
+                  if (part.functionResponse.response && typeof part.functionResponse.response.result === 'string') {
+                    productQuestionAnswer = part.functionResponse.response.result;
+                    console.log("Found product question answer:", productQuestionAnswer);
+                  }
+                }
                 // Process catalog search results
-                if (part.functionResponse && part.functionResponse.name === "call_catalog_search") {
+                else if (part.functionResponse && part.functionResponse.name === "call_catalog_search") {
                   hasFunctionResponse = true;
                   try {
-                    const resultJson = JSON.parse(part.functionResponse.response.result); 
+                    const resultJson = JSON.parse(part.functionResponse.response.result);
                     if (resultJson && Array.isArray(resultJson.items)) {
-                      productsFound = formatApiProducts(resultJson.items); 
+                      productsFound = formatApiProducts(resultJson.items);
                       console.log("Formatted products from API:", productsFound);
                     }
                   } catch (e) {
@@ -239,72 +247,34 @@ const AgentUI = () => {
               });
             }
           });
-        }  
-      
-        console.log("Final state - hasFunctionResponse:", hasFunctionResponse, "hasAnyFunctionCall:", hasAnyFunctionCall, "productsFound:", productsFound.length);
-                     
-        // Update the "Searching for..." message
-        setChatMessages(prevMessages => {
-          const updatedMessages = [...prevMessages];
-          const lastMessageIndex = updatedMessages.length - 1;
-          
-          if (lastMessageIndex >= 0 && 
-              updatedMessages[lastMessageIndex].type === 'bot' && 
-              updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
-            
-            if (!hasFunctionResponse && productsFound.length === 0) {
-              updatedMessages[lastMessageIndex] = { 
-                type: 'bot', 
-                text: "Search completed, but no products were found or processed." 
-              };
-            } else if (productsFound.length === 0 && hasFunctionResponse) {
-              updatedMessages[lastMessageIndex] = { 
-                type: 'bot', 
-                text: "I searched the catalog but didn't find any matching products." 
-              };
-            }
-          } else if (!hasFunctionResponse && productsFound.length === 0) {
-            updatedMessages.push({ 
-              type: 'bot', 
-              text: "Search completed, but no products were found or processed." 
-            });
-          }
-          return updatedMessages;
-        });
-        
-        // Display products if found
-        if (productsFound.length > 0) {
+        }
+
+        console.log("Final state - hasFunctionResponse:", hasFunctionResponse, "hasAnyFunctionCall:", hasAnyFunctionCall, "productsFound:", productsFound.length, "productQuestionAnswer:", !!productQuestionAnswer);
+
+        const newBotMessages = [];
+        if (productQuestionAnswer) {
+          // Priority 1: A direct answer to a question
+          newBotMessages.push({ type: 'bot', text: productQuestionAnswer });
+        } else if (productsFound.length > 0) {
+          // Priority 2: Found products
           const availableCount = productsFound.filter(p => p.availability > 0).length;
           const outOfStockCount = productsFound.length - availableCount;
           let productsInfoText = `I found ${productsFound.length} product(s) for you.`;
-          
-          if (availableCount === productsFound.length) { 
-            productsInfoText += " All are in stock!"; 
-          } else if (availableCount === 0) { 
-            productsInfoText += " Unfortunately, all are out of stock."; 
-          } else { 
-            productsInfoText += ` (${availableCount} in stock, ${outOfStockCount} out of stock).`; 
+
+          if (availableCount === productsFound.length) {
+            productsInfoText += " All are in stock!";
+          } else if (availableCount === 0) {
+            productsInfoText += " Unfortunately, all are out of stock.";
+          } else {
+            productsInfoText += ` (${availableCount} in stock, ${outOfStockCount} out of stock).`;
           }
 
-          setChatMessages(prev => {
-            const updatedMessages = [...prev];
-            const lastMessageIndex = updatedMessages.length - 1;
-            
-            if (lastMessageIndex >= 0 && 
-                updatedMessages[lastMessageIndex].type === 'bot' && 
-                (updatedMessages[lastMessageIndex].text.startsWith("Searching for") || 
-                 updatedMessages[lastMessageIndex].text.includes("searched the catalog"))) {
-              updatedMessages[lastMessageIndex] = { type: 'bot', text: productsInfoText };
-            } else {
-              updatedMessages.push({ type: 'bot', text: productsInfoText });
-            }
-            return updatedMessages;
-          });
+          newBotMessages.push({ type: 'bot', text: productsInfoText });
 
-          const productCardsHtml = productsFound.map(product => 
+          const productCardsHtml = productsFound.map(product =>
             ReactDOMServer.renderToString(
-              <ProductCard 
-                key={product.id} 
+              <ProductCard
+                key={product.id}
                 name={product.name}
                 price={product.price}
                 currency={product.currency}
@@ -315,39 +285,63 @@ const AgentUI = () => {
               />
             )
           ).join('');
-          
+
           const productListContainerHtml = `
             <div class="flex overflow-x-auto space-x-4 py-3 scrollbar-thin scrollbar-thumb-purple-400 scrollbar-track-purple-100 rounded-lg">
               ${productCardsHtml}
             </div>`;
-          
-          setChatMessages(prev => [...prev, { 
-            type: 'bot_products', 
-            text: productListContainerHtml 
-          }]);
+
+          newBotMessages.push({
+            type: 'bot_products',
+            text: productListContainerHtml
+          });
+        } else {
+          // Priority 3: Fallback "not found" messages
+          let fallbackText = "I searched the catalog but didn't find any matching products.";
+          if (!hasFunctionResponse) {
+             fallbackText = "Search completed, but no products were found or processed.";
+          }
+           newBotMessages.push({ type: 'bot', text: fallbackText });
         }
 
+        // Update the chat state by replacing the "Searching..." message with the new content
+        setChatMessages(prevMessages => {
+            const updatedMessages = [...prevMessages];
+            const lastMessageIndex = updatedMessages.length - 1;
+
+            if (lastMessageIndex >= 0 &&
+                updatedMessages[lastMessageIndex].type === 'bot' &&
+                updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
+              // Replace the "Searching..." message with the new one(s)
+              updatedMessages.pop();
+              return [...updatedMessages, ...newBotMessages];
+            } else {
+              // If "Searching..." isn't the last message, just add the new one(s)
+              return [...prevMessages, ...newBotMessages];
+            }
+        });
+
       } else {
-        const errorData = await response.json().catch(() => ({ 
-          message: "Failed to parse error response from search" 
+        const errorData = await response.json().catch(() => ({
+          message: "Failed to parse error response from search"
         }));
         console.error('Failed to search catalog:', response.status, errorData);
-        
-        setChatMessages(prevMessages => { 
+
+        setChatMessages(prevMessages => {
           const updatedMessages = [...prevMessages];
           const lastMessageIndex = updatedMessages.length - 1;
-          
-          if (lastMessageIndex >= 0 && 
-              updatedMessages[lastMessageIndex].type === 'bot' && 
+
+          if (lastMessageIndex >= 0 &&
+              updatedMessages[lastMessageIndex].type === 'bot' &&
               updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
-            updatedMessages[lastMessageIndex] = { 
-              type: 'bot', 
-              text: `Sorry, I encountered an error: ${errorData.message || response.statusText}` 
+            updatedMessages[lastMessageIndex] = {
+              type: 'bot',
+              text: `Sorry, I encountered an error: ${errorData.message || response.statusText}`
             };
           } else {
-            updatedMessages.push({ 
-              type: 'bot', 
-              text: `Sorry, I encountered an error: ${errorData.message || response.statusText}` 
+            updatedMessages.push({
+              type: 'bot',
+              text: `Sorry, I encountered an error: ${errorData.message || response.statusText}`
             });
           }
           return updatedMessages;
@@ -355,22 +349,22 @@ const AgentUI = () => {
       }
     } catch (error) {
       console.error('Error during searchCatalog API call:', error);
-      
-      setChatMessages(prevMessages => { 
+
+      setChatMessages(prevMessages => {
         const updatedMessages = [...prevMessages];
         const lastMessageIndex = updatedMessages.length - 1;
-        
-        if (lastMessageIndex >= 0 && 
-            updatedMessages[lastMessageIndex].type === 'bot' && 
+
+        if (lastMessageIndex >= 0 &&
+            updatedMessages[lastMessageIndex].type === 'bot' &&
             updatedMessages[lastMessageIndex].text.startsWith("Searching for")) {
-          updatedMessages[lastMessageIndex] = { 
-            type: 'bot', 
-            text: `Sorry, a network error occurred: ${error.message}` 
+          updatedMessages[lastMessageIndex] = {
+            type: 'bot',
+            text: `Sorry, a network error occurred: ${error.message}`
           };
         } else {
-          updatedMessages.push({ 
-            type: 'bot', 
-            text: `Sorry, a network error occurred: ${error.message}` 
+          updatedMessages.push({
+            type: 'bot',
+            text: `Sorry, a network error occurred: ${error.message}`
           });
         }
         return updatedMessages;
@@ -379,16 +373,16 @@ const AgentUI = () => {
   };
 
   useEffect(() => {
-    const initialSessionId = crypto.randomUUID(); 
-    setSessionId(initialSessionId); 
-    if (userName) { 
-      createNewSession(initialSessionId, userName); 
+    const initialSessionId = crypto.randomUUID();
+    setSessionId(initialSessionId);
+    if (userName) {
+      createNewSession(initialSessionId, userName);
     }
-  }, [userName]); 
+  }, [userName]);
 
   useEffect(() => {
-    if (chatContainerRef.current) { 
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight; 
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
 
@@ -399,33 +393,33 @@ const AgentUI = () => {
     event.preventDefault();
     const trimmedUserInput = searchTerm.trim();
     if (trimmedUserInput) {
-      setChatMessages(prevMessages => [...prevMessages, { 
-        type: 'user', 
-        text: trimmedUserInput 
+      setChatMessages(prevMessages => [...prevMessages, {
+        type: 'user',
+        text: trimmedUserInput
       }]);
       setSearchTerm("");
       await searchCatalog(trimmedUserInput, sessionId, userName);
     }
   };
-  
+
   const handleNewConversation = () => {
     setChatMessages([]);
     setSearchTerm("");
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
-    if (userName) { 
-      createNewSession(newSessionId, userName); 
+    if (userName) {
+      createNewSession(newSessionId, userName);
     }
   };
-  
+
   return (
     <div className="flex flex-col h-screen bg-purple-50 font-sans antialiased">
       <header className="bg-purple-600 text-white p-4 flex justify-between items-center shadow-md flex-shrink-0 sticky top-0 z-20">
         <div className="flex flex-col">
           <h1 className="text-xl font-semibold">Product Catalog Agent</h1>
         </div>
-        <button 
-          onClick={handleNewConversation} 
+        <button
+          onClick={handleNewConversation}
           className="flex items-center bg-purple-500 hover:bg-purple-400 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-colors text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-300"
         >
           <Plus size={20} className="mr-1 sm:mr-2" /> New Conversation
@@ -433,7 +427,7 @@ const AgentUI = () => {
       </header>
 
       <main ref={chatContainerRef} className="flex-grow p-4 md:p-6 overflow-y-auto">
-        {chatMessages.length === 0 && ( 
+        {chatMessages.length === 0 && (
           <div className="bg-fuchsia-100 text-gray-700 p-4 rounded-lg mb-6 shadow flex items-start">
             <MessageSquare size={24} className="text-purple-600 mr-3 flex-shrink-0 mt-1" />
             <p>Please enter what you are looking for in the product catalog.</p>
@@ -442,12 +436,12 @@ const AgentUI = () => {
         <div className="space-y-4 mb-6">
           {chatMessages.map((msg, index) => (
             <div key={index} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-full p-3 rounded-lg shadow ${ 
-                msg.type === 'user' 
-                  ? 'bg-purple-500 text-white ml-auto' 
-                  : msg.type === 'bot_products' 
-                    ? 'bg-transparent w-full' 
-                    : 'bg-white text-gray-700 mr-auto' 
+              <div className={`max-w-full p-3 rounded-lg shadow ${
+                msg.type === 'user'
+                  ? 'bg-purple-500 text-white ml-auto'
+                  : msg.type === 'bot_products'
+                    ? 'bg-transparent w-full'
+                    : 'bg-white text-gray-700 mr-auto'
               }`}>
                 <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
               </div>
@@ -459,30 +453,30 @@ const AgentUI = () => {
       <footer className="bg-white p-3 border-t border-gray-200 flex-shrink-0 sticky bottom-0 z-20">
         <form onSubmit={handleSubmitSearch} className="flex items-center bg-fuchsia-100 rounded-lg p-1 shadow-sm focus-within:ring-2 focus-within:ring-purple-400 transition-shadow">
           <Search size={20} className="text-gray-500 mx-3" />
-          <input 
-            type="text" 
-            value={searchTerm} 
-            onChange={handleSearchChange} 
-            placeholder="Search product catalog" 
-            className="flex-grow p-3 bg-transparent text-gray-700 placeholder-gray-500 focus:outline-none" 
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            placeholder="Search product catalog"
+            className="flex-grow p-3 bg-transparent text-gray-700 placeholder-gray-500 focus:outline-none"
           />
-          {searchTerm && ( 
-            <button 
-              type="button" 
-              onClick={clearSearch} 
-              className="text-gray-500 hover:text-gray-700 p-2 mr-1 rounded-full" 
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="text-gray-500 hover:text-gray-700 p-2 mr-1 rounded-full"
               title="Clear search"
-            > 
-              <X size={20} /> 
-            </button> 
+            >
+              <X size={20} />
+            </button>
           )}
-          <button 
-            type="submit" 
-            title="Search" 
-            className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-lg ml-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50" 
+          <button
+            type="submit"
+            title="Search"
+            className="bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-lg ml-2 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400 disabled:opacity-50"
             disabled={!searchTerm.trim()}
-          > 
-            <Send size={20} /> 
+          >
+            <Send size={20} />
           </button>
         </form>
       </footer>
