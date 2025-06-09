@@ -6,6 +6,7 @@ def return_instructions_root() -> str:
 
     You have access to the following tool:
 
-    * tool_call_catalog_search: This tool allows you to search the product catalog by passing keywords. The search keywords can be a product name or a product ID. Product IDs have a format like GGOEGAEB164818.
+    - tool_call_catalog_search: This tool allows you to search the product catalog by passing keywords. The search keywords can be a product name or a product ID. Product IDs have a format like GGOEGAEB164818.
+    - product_question: This tool for answering general inquiries about searched products.
     """
     return instruction_prompt

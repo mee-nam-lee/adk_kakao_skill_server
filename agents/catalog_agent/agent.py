@@ -85,7 +85,7 @@ def check_model_armor_rules(callback_context: CallbackContext) -> Optional[types
 root_agent = Agent(
     name="catalog_agent",
     model=model,
-    description="An agent that searches the product catalog.",
+    description="An agent that searches the product catalog and answer a general question of product.",
     instruction=return_instructions_root(),
     tools=[call_catalog_search, AgentTool(product_question)],
     before_agent_callback=check_model_armor_rules,
