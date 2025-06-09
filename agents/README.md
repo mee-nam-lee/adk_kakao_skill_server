@@ -20,11 +20,9 @@ This agent is using a Google Cloud Search for Commerce API. So you need to setup
     source .venv/bin/activate
     # Windows CMD: .venv\Scripts\activate.bat
     ```
-1. install ADK
+1. Run the following command to install the required packages.(ex. google-adk, google-cloud-retail)
     ```bash
-    pip install google-adk
-    pip install google
-    pip install google-cloud-retail
+    pip install -r requirements.txt
     ```
 1. Set up a [Google Cloud project](https://cloud.google.com/vertex-ai/generative-ai/docs/start/quickstarts/quickstart-multimodal#setup-gcp)
 1. Enable the [Vertex AI API](https://console.cloud.google.com/flows/enableapi?apiid=aiplatform.googleapis.com).
