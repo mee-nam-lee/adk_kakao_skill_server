@@ -6,7 +6,7 @@ import json
 import os
 
 project_id = google.auth.default()[1]
-serving_config_name = os.environ.get('SERVING_CONFIG_NAME', 'default_search')
+serving_config_name = os.environ.get('SERVING_CONFIG_NAME', 'test-search-config')
 
 def get_search_request(query: str):
     default_search_placement = (
