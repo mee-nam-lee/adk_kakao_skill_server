@@ -103,6 +103,39 @@ const detectModelArmorBlocking = (apiResponseArray) => {
   return { isBlocked: false, reason: "No blocking detected" };
 };
 
+// Helper function to convert basic markdown to HTML
+const markdownToHtml = (text = "") => {
+    if (!text) return "";
+
+    // Handle bold first across the entire text
+    const boldedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Split into paragraphs based on one or more empty lines
+    const paragraphs = boldedText.split(/\n\s*\n/);
+
+    const html = paragraphs.map(paragraph => {
+        // Trim whitespace from the paragraph
+        const trimmedParagraph = paragraph.trim();
+        if (!trimmedParagraph) return "";
+
+        const lines = trimmedParagraph.split('\n');
+        // Check if all non-empty lines in the paragraph are list items
+        const isList = lines.every(line => line.trim().startsWith('*'));
+
+        if (isList) {
+            const listItems = lines
+                .map(line => `<li>${line.trim().substring(1).trim()}</li>`)
+                .join('');
+            return `<ul>${listItems}</ul>`;
+        } else {
+            // It's a regular paragraph, replace single newlines with <br />
+            return `<p>${trimmedParagraph.replace(/\n/g, '<br />')}</p>`;
+        }
+    }).join('');
+
+    return html;
+};
+
 // Main Agent UI Component
 const AgentUI = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -412,6 +445,21 @@ const AgentUI = () => {
     }
   };
 
+  const getMessageHtml = (msg) => {
+    switch (msg.type) {
+        case 'bot':
+            // Convert markdown-like text to HTML for regular bot messages
+            return markdownToHtml(msg.text);
+        case 'bot_products':
+            // This content is already HTML
+            return msg.text;
+        case 'user':
+        default:
+            // For user text, just replace newlines
+            return msg.text.replace(/\n/g, '<br />');
+    }
+  }
+
   return (
     <div className="flex flex-col h-screen bg-purple-50 font-sans antialiased">
       <header className="bg-purple-600 text-white p-4 flex justify-between items-center shadow-md flex-shrink-0 sticky top-0 z-20">
@@ -443,7 +491,7 @@ const AgentUI = () => {
                     ? 'bg-transparent w-full'
                     : 'bg-white text-gray-700 mr-auto'
               }`}>
-                <div dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
+                <div dangerouslySetInnerHTML={{ __html: getMessageHtml(msg) }} />
               </div>
             </div>
           ))}
