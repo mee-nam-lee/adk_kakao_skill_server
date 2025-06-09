@@ -80,18 +80,11 @@ def check_model_armor_rules(callback_context: CallbackContext) -> Optional[types
     return None
 
 
-# Create agent with Model Armor callback
 root_agent = Agent(
     name="catalog_agent",
     model=model,
     description="An agent that searches the product catalog.",
     instruction=return_instructions_root(),
     tools=[call_catalog_search],
-    #before_agent_callback=check_model_armor_rules
+    before_agent_callback=check_model_armor_rules
 )
-
-##################################
-# Task 7: Enhance the conversational product search Agent created in Task 6 
-# by adding a prompt sanitization feature add the line below 
-# before_agent_callback=check_model_armor_rules
-##################################
