@@ -16,10 +16,6 @@ from pydantic import BaseModel
 
 dotenv.load_dotenv()
 
-class KakaoInput(BaseModel):
-    # 기본값을 설정하기 위해 Optional 타입을 사용합니다.
-    user_input: str 
-
 class SimpleText(BaseModel):
     text: str
 
@@ -52,22 +48,43 @@ app: FastAPI = get_fast_api_app(
     web=SERVE_WEB_INTERFACE,
 )
 
-@app.get("/hello")
-async def read_root():
-    return {"Hello": "World"}
+app_name = "kakao_skill_server"
+runner = InMemoryRunner(agent=root_agent, app_name=app_name)
 
-@app.post("/call_agent", tags=["KakaoInput"], response_model=KakaoResponse)
-async def call_agent(kakaoInput: KakaoInput) -> KakaoResponse:
-
-    print(f"user_input: {kakaoInput.user_input}")
-    app_name = "kakao_skill_server"
-
-    runner = InMemoryRunner(agent=root_agent, app_name=app_name)
-    session = await runner.session_service.create_session(
-        app_name=runner.app_name, user_id="test_user"
+@app.post("/hello", response_model=KakaoResponse)
+async def read_root() -> KakaoResponse:
+    return KakaoResponse(
+        template=Template(
+            outputs=[
+                OutputItem(
+                    simpleText=SimpleText(text="hello I'm Ryan")
+                )
+            ]
+        )
     )
 
-    content = types.Content(parts=[types.Part(text=kakaoInput.user_input)])
+@app.post("/call_agent", tags=["KakaoInput"], response_model=KakaoResponse)
+async def call_agent(kakaoInput: dict) -> KakaoResponse: # Changed KakaoInput to dict
+    user_id = kakaoInput.get("userRequest", {}).get("user", {}).get("id") or "test_user"
+    session_id ="session123"
+
+    print(f"kakaoInput: {kakaoInput}")
+
+    user_input_text = kakaoInput.get("userRequest", {}).get("utterance") # Safely get nested utterance
+    print(f"user_input: {user_input_text}")
+    
+    session = await runner.session_service.get_session(app_name=app_name,
+                                            user_id=user_id, 
+                                            session_id=session_id)
+    
+    if session is None:  
+        print(f"Creating new session : {session_id}")
+        session = await runner.session_service.create_session(
+            app_name=runner.app_name, user_id=user_id, session_id=session_id
+        )
+
+    #print(f"State agent run: {session.state}")
+    content = types.Content(parts=[types.Part(text=user_input_text)], role="user") # Use extracted text
     response = ""
 
     async for event in runner.run_async(
@@ -79,6 +96,7 @@ async def call_agent(kakaoInput: KakaoInput) -> KakaoResponse:
         if event.content.parts and event.content.parts[0].text:
             agent_response_text = event.content.parts[0].text # Renamed for clarity
 
+    print(f"agent_response_text #### : {agent_response_text}")
 
     # Construct the Kakao-specific response
     return KakaoResponse(

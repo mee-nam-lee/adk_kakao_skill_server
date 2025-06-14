@@ -1,7 +1,4 @@
-# genai-hackathon-adk
-Generative AI Hackathon Task 6: ADK(Agent Development Kit)
-
-This agent is using a Google Cloud Search for Commerce API. So you need to setup it first. [Interactive tutorials](https://cloud.google.com/retail/docs/retail-api-tutorials)
+# 
 
 ## Set up and install 
 
@@ -18,7 +15,6 @@ This agent is using a Google Cloud Search for Commerce API. So you need to setup
     ```bash
     python -m venv .venv
     source .venv/bin/activate
-    # Windows CMD: .venv\Scripts\activate.bat
     ```
 1. Run the following command to install the required packages.(ex. google-adk, google-cloud-retail)
     ```bash
@@ -34,7 +30,6 @@ This agent is using a Google Cloud Search for Commerce API. So you need to setup
     GOOGLE_GENAI_USE_VERTEXAI=TRUE
     GOOGLE_CLOUD_PROJECT=<YOUR_PROJECT_ID>
     GOOGLE_CLOUD_LOCATION=us-central
-    SEARCH_SERVING_CONFIG_ID=test-search-config
     MODEL=gemini-2.0-flash-001
     ```
 1. start with Dev UI(adk web)
@@ -72,27 +67,11 @@ export GOOGLE_GENAI_USE_VERTEXAI=TRUE
 export GOOGLE_CLOUD_PROJECT=<YOUR PROJECT ID>
 ```
 
-### IAM policy
-
-Cloud Run application will run with Compute Engine Default Service Account. It needs a Retail Viewer role to call the Retail API.
-
-```bash
-export PROJECT_NUMBER=$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format="value(projectNumber)")
-export COMPUTE_SA=$PROJECT_NUMBER-compute@developer.gserviceaccount.com
-gcloud projects add-iam-policy-binding ${GOOGLE_CLOUD_PROJECT} --member serviceAccount:${COMPUTE_SA} --role=roles/retail.viewer
-```
-
-### Build client application 
-
-```bash
-cd search-app
-yarn build
-```
 ### Deploy agent to Cloud Run
 
 ```bash
 cd ../agents
-gcloud run deploy catalog-agent \
+gcloud run deploy skill-sever-agent \
 --source . \
 --region $GOOGLE_CLOUD_LOCATION \
 --project $GOOGLE_CLOUD_PROJECT \
@@ -150,5 +129,14 @@ curl -X POST $APP_URL/run \
 ```
 curl -X POST http://0.0.0.0:8080/call_agent \
     -H "Content-Type: application/json" \
-    -d '{"input_input": "hello", "msg":""}'
+    -d '{ "userRequest": { "utterance": "더위를 식히는 방법 알려줘" }}'
 ```
+
+curl -X POST http://0.0.0.0:8080/hello 
+
+curl -X POST https://skill-sever-agent-712033249112.us-central1.run.app/hello
+
+curl -X POST https://skill-sever-agent-712033249112.us-central1.run.app/call_agent \
+    -H "Content-Type: application/json" \
+    -d '{ "userRequest": { "utterance": "안녕" }}'
+
