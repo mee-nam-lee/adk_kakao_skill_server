@@ -145,3 +145,10 @@ curl -X POST $APP_URL/run \
     "streaming": false
     }'
 ```
+
+#### call agent
+```
+curl -X POST http://0.0.0.0:8080/call_agent \
+    -H "Content-Type: application/json" \
+    -d '{"input_input": "hello", "msg":""}'
+```
