@@ -1,3 +1,5 @@
+**/.gitignore
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -24,7 +26,7 @@ share/python-wheels/
 MANIFEST
 
 # Environments
-.env
+**/.env
 .venv
 env/
 venv/
